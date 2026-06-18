@@ -1,29 +1,40 @@
 import { Link } from 'react-router-dom';
-
-const APPOINTMENTS = [
-  { id: 'a1', time: '09:00 AM', name: 'Rohan Kumar',  initials: 'RK', complaint: 'Recurring fever',     type: 'Online',    status: 'Confirmed',  statusClass: 'badge-success' },
-  { id: 'a2', time: '10:00 AM', name: 'Ankit Joshi',  initials: 'AJ', complaint: 'Back pain',           type: 'In-person', status: 'Confirmed',  statusClass: 'badge-success' },
-  { id: 'a3', time: '11:00 AM', name: 'Karan Desai',  initials: 'KD', complaint: 'Digestive complaint', type: 'Online',    status: 'Confirmed',  statusClass: 'badge-success' },
-];
+import { useAuth } from '../../auth/AuthContext';
 
 export function HomePage() {
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'DOCTOR';
+
+  const doctorCards = [
+    { label: 'Doctor Dashboard',   desc: "Today's schedule, stats & slot grid",            to: '/dashboard',         icon: '⊞' },
+    { label: 'Start Consultation', desc: 'Open workspace with patient snapshot & AI summary', to: '/consultations',     icon: '♥' },
+    { label: 'Prescriptions',      desc: 'Issue digital prescriptions, send via WhatsApp',  to: '/prescriptions',     icon: '✦' },
+    { label: 'Doctor Setup',       desc: '4-step onboarding wizard — clinic to payments',    to: '/doctor-onboarding', icon: '✚' },
+  ];
+
+  const patientCards = [
+    { label: 'Book Appointment',   desc: 'Patient-facing booking flow with payment',        to: '/booking/details',   icon: '📅' },
+    { label: 'Health Records',     desc: 'Past records, uploaded reports, share links',     to: '/records',           icon: '◈' },
+  ];
+
+  const cards = isDoctor ? doctorCards : patientCards;
+
   return (
     <main className="page">
       <div className="page-header">
-        <h1 className="page-title">CURO — Clinical Workspace</h1>
-        <p className="page-subtitle">A calm workspace for independent doctors and small clinics.</p>
+        <h1 className="page-title">
+          Welcome{(user as any)?.fullName ? `, ${(user as any).fullName}` : ''} 👋
+        </h1>
+        <p className="page-subtitle">
+          {isDoctor
+            ? 'Your clinical workspace is ready.'
+            : 'Your health portal is ready.'}
+        </p>
       </div>
 
       {/* Quick nav cards */}
       <div className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
-        {[
-          { label: 'Doctor Dashboard', desc: 'View today\'s schedule, stats, and slot grid', to: '/doctor-dashboard', icon: '⊞' },
-          { label: 'Start Consultation', desc: 'Open workspace with patient snapshot & AI summary', to: '/consultations', icon: '♥' },
-          { label: 'Book Appointment', desc: 'Patient-facing booking flow with payment', to: '/booking/details', icon: '📅' },
-          { label: 'Prescriptions', desc: 'Issue digital prescriptions, send via WhatsApp', to: '/prescriptions', icon: '✦' },
-          { label: 'Health Records', desc: 'Patient records, uploaded reports, share links', to: '/records', icon: '◈' },
-          { label: 'Doctor Setup', desc: '4-step onboarding wizard — clinic to payments', to: '/doctor-onboarding', icon: '✚' },
-        ].map((card) => (
+        {cards.map((card) => (
           <Link
             key={card.to}
             to={card.to}
@@ -53,33 +64,18 @@ export function HomePage() {
         ))}
       </div>
 
-      {/* Today's upcoming */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Today's upcoming consultations</h2>
-          <Link to="/doctor-dashboard" className="btn btn-ghost btn-sm">View all →</Link>
+      {/* Onboarding nudge for new doctors */}
+      {isDoctor && (user as any)?.needsOnboarding && (
+        <div className="card" style={{ borderLeft: '3px solid var(--primary)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Complete your profile setup</div>
+            <div className="text-sm text-muted">Finish the 4-step onboarding to activate your booking link and start accepting patients.</div>
+          </div>
+          <Link to="/doctor-onboarding" className="btn btn-primary btn-sm" style={{ whiteSpace: 'nowrap' }}>
+            Go to Setup →
+          </Link>
         </div>
-        <div className="appt-list">
-          {APPOINTMENTS.map((a) => (
-            <Link
-              key={a.id}
-              to="/consultations"
-              className="appt-row"
-              style={{ padding: '10px 8px', textDecoration: 'none' }}
-            >
-              <div className="appt-avatar">{a.initials}</div>
-              <div className="appt-info">
-                <div className="appt-name">{a.name}</div>
-                <div className="appt-meta">{a.complaint} · {a.type}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                <span className="appt-time">{a.time}</span>
-                <span className={`badge ${a.statusClass}`}>{a.status}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+      )}
     </main>
   );
 }

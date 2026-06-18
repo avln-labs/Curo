@@ -292,7 +292,7 @@ export function LandingPage() {
 
               {!backendOnline && (
                 <p style={{ fontSize: '0.7rem', color: '#D97706', marginBottom: 8 }}>
-                  Demo mode: backend offline. Use mobile <strong>9876543210</strong> (doctor) or <strong>9123456789</strong> (patient).
+                  Demo mode: backend offline. Any 10-digit number works — use OTP <strong>123456</strong>.
                 </p>
               )}
 

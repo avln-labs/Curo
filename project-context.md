@@ -10,74 +10,108 @@ This document serves as a living record of the project's development state, deta
 
 ## B. Architecture State
 
-- **Frontend:** Single Page Application built with **Vite + React + TypeScript**. Styling uses a custom, highly fluid Claude-style light theme (`src/styles.css` and `src/features/auth/landing.css`) centered on an HSL color system (stone backgrounds, teal highlights, smooth borders, and micro-animations). 
-- **Backend:** **Node.js + Express + TypeScript** server using `tsx` watcher. Organised into self-contained feature folders containing routers, validation schemas, and service adapters.
-- **Database / State:** Core authentication and session state use an in-memory data store with time-to-live (TTL) expiration. PostgreSQL adapters exist as a skeleton connection pool but are not currently wired to the live business logic.
+- **Frontend:** Single Page Application built with **Vite + React + TypeScript**. Styling uses a custom fluid theme (`src/styles.css`) with HSL color system (stone backgrounds, teal highlights, smooth borders, micro-animations).
+- **Backend:** **Node.js + Express + TypeScript** server using `tsx` watcher. Feature-organized folders with routers, Zod schemas, and database service adapters.
+- **Database:** **PostgreSQL via Supabase** using connection pooler (port 6543, pgBouncer). Schema fully migrated via `npm run db:migrate`.
 - **Run Modes:**
-  - **Offline/Demo Mode:** The frontend probes the backend health endpoint `/api/v1/health` with a 1.5-second timeout. If offline, it acts as a client-side mockup defaulting to OTP `123456` with mock seed user profiles.
-  - **Full Connected Mode:** If the backend is running, the frontend integrates with backend route endpoints for registration, login, token refresh, and doctor dashboard metrics.
+  - **Offline/Demo Mode:** Frontend probes `/api/v1/health` with 1.5s timeout. If offline, any 10-digit number + OTP `123456` creates a generic demo session.
+  - **Full Connected Mode:** Backend is running → real DB auth, onboarding, and dashboard metrics.
+- **Environment:** `.env` uses Connection Pooler URI with URL-encoded password. Twilio is configured for India (+91); `OTP_PROVIDER=console` prints OTPs to terminal during development.
 
 ---
 
 ## C. Feature Implementation Truth Map
 
-| Feature Area | Frontend UI | Backend Routes / State | Integration Status |
+| Feature Area | Frontend UI | Backend Routes | DB Integration |
 | :--- | :--- | :--- | :--- |
-| **Auth System** | Completed (OTP screens, role selector) | Completed (OTP store, JWT sign/verify) | **Fully Connected** (Graceful offline fallback) |
-| **Doctor Onboarding** | Completed (4-step onboarding wizard) | Scaffolded (Registration & details) | Mock Integration |
-| **Doctor Dashboard** | Completed (Stats strip, next consult, slots) | Completed (Dashboard endpoint with data) | **Fully Connected** |
-| **Schedule / Slots** | Completed (Weekly grid, blocked dates UI) | Scaffolded | Mock Integration |
-| **Patient Booking** | Completed (Stepper flow, slot calendar) | Scaffolded | Mock Integration |
-| **Consultation Flow** | Completed (Snapshot, AI summary, notes) | Scaffolded | Mock Integration |
-| **Prescription Builder** | Completed (Medications grid & PDF builder) | Scaffolded | Mock Integration |
-| **Health Threads** | Completed (Timeline layout, search list) | Scaffolded | Mock Integration |
-| **Payments / Payouts** | Completed (Mock Razorpay & Payouts list) | Scaffolded | Mock Integration |
-| **Admin Panel** | Completed (Verification queue, analytics) | Scaffolded | Mock Integration |
-| **Notifications** | Scaffolded / Notification center mockup | Scaffolded | Not Connected |
+| **Auth (OTP + JWT)** | ✅ Complete | ✅ Complete | ✅ Live |
+| **Doctor Registration** | ✅ Complete | ✅ Complete | ✅ Live |
+| **Doctor Onboarding (4 steps)** | ✅ Complete — API wired | ✅ 3 steps + profile endpoint | ✅ Live (saves to `doctor_profiles`) |
+| **Doctor Dashboard** | ✅ Complete — real API | ✅ Aggregation queries | ✅ Live |
+| **Doctor Schedule** | ✅ Complete — real API | ✅ Schedule + blocked dates | ✅ Live |
+| **Admin Verification** | 🔒 Internal only (ADMIN role) | ✅ Queue endpoint scaffolded | Pending Phase 4 |
+| **Patient Booking** | 🔶 UI scaffolded | 🔶 Schema ready | ⏳ Phase 3 |
+| **Consultation Flow** | 🔶 Empty state shown | 🔶 Schema ready | ⏳ Phase 3 |
+| **Prescription Builder** | 🔶 Empty state shown | 🔶 Schema ready | ⏳ Phase 3 |
+| **Health Threads** | 🔶 Empty state shown | 🔶 Aggregation query ready | ⏳ Phase 3 |
+| **Payments / Payouts** | 🔶 Scaffolded | 🔶 Schema ready | ⏳ Phase 4 |
+| **Notifications** | 🔶 Scaffolded | 🔶 Schema ready | ⏳ Phase 4 |
 
 ---
 
-## D. What is Built & Completed
+## D. What is Built & Verified (Phase 1 + Phase 2 Fixes)
 
-### 1. Unified Authentication System
-- **Gamified Landing Page:** Interactive role-selection (Doctor vs. Patient) with fluid CSS spring animations, tabbed login/signup states, multi-dot OTP entry indicators, and success confirmation visual checkmarks.
-- **Session Security:** Complete JWT authentication lifecycle including Access Tokens (short-lived), Refresh Tokens (rotating), auto-refresh headers on `401 Unauthorized`, and server-side blacklisting upon `/logout`.
-- **Pre-Seeded Mock Roles:** Dedicated accounts registered for verification:
-  - Doctor: `9876543210`
-  - Patient: `9123456789`
-  - Admin: `9000000000`
+### 1. Database (PostgreSQL — Supabase)
+- Full schema with `users`, `doctors`, `doctor_profiles`, `doctor_settings`, `doctor_consultation_types`, `doctor_schedules`, `blocked_dates`, `patients`, `appointments`, `prescriptions`, `payments`, `notifications`, `health_thread_events`.
+- Migration runner: `npm run db:migrate`
 
-### 2. Doctor Workspace & Intake View
-- **Dashboard:** At-a-glance KPIs (Daily revenue, confirmed appointments count, pending counts), next-up patient highlight, and a color-coded time-slot tracker.
-- **Consultation View:** Built-in timer tracker, allergy/history summary tiles, freeform doctor note taking (with draft state), and a standard medications/dosage prescribing grid.
-- **Schedule Management:** A customizable visual calendar for editing weekly recurring hours and blocking out date ranges.
+### 2. Auth System
+- Twilio SMS OTP (India, +91) with console fallback
+- Bcrypt-hashed OTP, 5-min expiry, brute-force limit
+- JWT access token (15min) + rotating refresh token (30 days)
+- Role-locked login: `DOCTOR` vs `PATIENT`
 
-### 3. Patient Workspace & Intake Stepper
-- **Booking Flow:** Four-step booking setup: Patient Details, Symptoms & Complaint details, Slot Selector (dates and times), and a Checkout summary page with a mockup file upload widget.
-- **Health Portal:** Individual patient login showing timeline-based past clinic records, prescriptions, and an option to generate temporary access share links.
+### 3. Doctor Onboarding (Root Cause Fixed in Phase 2)
+**Root cause of empty profiles:** The 4-step onboarding wizard was purely local React state — no API calls. Every "Next →" button just called `setStep()`. Backend endpoints existed but were never called.
 
-### 4. Admin Verification Desk
-- **Clinic Dashboard:** Registration verification desk for approving/rejecting doctor applications, complete with simulated stats charts and verification filters.
+**Fix applied:**
+- Step 1 → `POST /doctors/onboarding/profile` (sends `qualifications[]`, `specialisations[]`, `languages[]` as proper arrays)
+- Step 2 → `POST /doctors/onboarding/fees`
+- Step 3 → `POST /doctors/onboarding/schedule`
+- Step 4 → Submit for verification (Phase 4: Razorpay payouts)
+- On mount: `GET /doctors/profile` restores saved state, resumes at correct step
+- Verification status banners: Pending ⏳ / Verified ✅ / Rejected ❌ (with rejection reason + resubmit flow)
+
+### 4. Demo Data Removed
+All hardcoded mock data removed from the frontend:
+- `DoctorDashboardPage.tsx` — real API
+- `DoctorSchedulePage.tsx` — real API
+- `DoctorOnboardingPage.tsx` — real API + blank forms
+- `ConsultationDashboard.tsx` — proper empty state
+- `RecordsPage.tsx` — proper empty state
+- `PrescriptionPage.tsx` — proper empty state
+- `HealthThreadPage.tsx` — proper empty state
+- `useHomePage.ts` — no hardcoded stats, role-aware links only
+- `AppShell.tsx` — Admin Console hidden from doctors
+
+### 5. Navigation
+- Admin Console is ADMIN-only (not visible to doctors/patients)
+- Doctor sidebar: Dashboard · Consultations · Schedule · Prescriptions · Records · Doctor Setup
+- Patient sidebar: My Records · Appointments · Prescriptions
 
 ---
 
-## E. What is Left Out & Remaining (From PRD v1.0.0)
+## E. Remaining (Upcoming Phases)
 
-To transition from the current demo/in-memory prototype to a production-ready application, the following items from the PRD are remaining:
+### Phase 3 — Booking Engine + Clinical Workflow
+- Slot reservation + hold-before-payment
+- Razorpay checkout order creation + `payment.captured` webhook → activates appointment
+- Consultation flow with real patient data
+- Prescription builder tied to active appointment
+- WhatsApp delivery of Rx via Twilio
+- Patient health thread — real data from DB
 
-### 1. Database & Persistence Layer
-- **PostgreSQL Migration:** Implement physical SQL schemas, indices, and Knex/Prisma/Sequelize migrations matching Section 9 of the PRD.
-- **Data Persistence:** Replace the temporary in-memory store in `backend/src/shared/store.ts` with real database queries for accounts, bookings, records, and prescriptions.
+### Phase 4 — Verification + Payouts + AI
+- Admin verification queue UI + approve/reject endpoints
+- Doctor receives approval/rejection + reads updated status on onboarding page
+- AI Pre-Consult Summary (Gemini API)
+- PDF prescription generation + Supabase Storage
+- T+2 payout settlement (Razorpay payouts, 2.5% platform fee)
+- External NMC validation (real council API)
 
-### 2. External Third-Party API Integrations
-- **SMS Gateway (OTP Delivery):** Replace the server-logged OTP simulation with a real provider API (such as MSG91, Twilio, or Firebase Phone Auth).
-- **WhatsApp Business API:** Connect automated consultation triggers, payment confirmation messages, and prescription download URLs.
-- **Razorpay Payments Checkout:** Connect the live Razorpay API checkouts, configure HMAC signature validation, and handle the `payment.captured` Webhooks to automate booking confirmation status (BR-05/06).
-- **Storage Buckets (S3 / GCS):** Connect S3 presigned URLs for patient documents and medical reports, and integrate antivirus/malware file scanners before storage.
+---
 
-### 3. Core Business Logic & Algorithms
-- **Dynamic AI Pre-Consult summaries:** Build the LLM pipeline (e.g. OpenAI/Gemini/Anthropic API) that aggregates the patient's intake form and historical health records into a traceable, source-cited summary.
-- **Public Booking Slug Resolution:** Support public domain lookup (e.g., `curo.app/dr-arun-sharma`) resolving to a public profile booking page without requiring patient authentication beforehand.
-- **Live Consultation Rooms:** Integrate WebRTC or video platform SDKs (e.g., Daily.co, Zoom, or Jitsi) to support virtual consulting features.
-- **NMC Doctor Verification:** Connect lookup verification adapters to check medical registration details against NMC or local health council APIs.
-- **Cancellation & Payout Rules:** Implement automatic settlement calculations (T+2 settlements, 2.5% platform fee deduction) and policy refunds based on the appointment booking times.
+## F. Key File Locations
+
+| File | Purpose |
+|---|---|
+| `backend/src/auth/service.ts` | OTP send/verify, JWT issue, refresh logic |
+| `backend/src/doctors/routes.ts` | All doctor endpoints (onboarding + profile + dashboard + schedule) |
+| `backend/src/doctors/service.ts` | DB queries for all doctor data |
+| `backend/src/doctors/schema.ts` | Zod schemas (expects arrays for qualifications, specialisations, languages) |
+| `frontend/src/features/doctor-onboarding/components/DoctorOnboardingPage.tsx` | 4-step wizard, API-wired |
+| `frontend/src/features/doctor-onboarding/components/DoctorDashboardPage.tsx` | Live dashboard from API |
+| `frontend/src/features/doctor-onboarding/components/DoctorSchedulePage.tsx` | Live schedule from API |
+| `frontend/src/shared/api.ts` | All typed API calls |
+| `frontend/src/features/auth/AuthContext.tsx` | Auth state, JWT storage, fullName mapping |
+| `backend/.env` | DB connection pooler URL, Twilio, JWT secret |

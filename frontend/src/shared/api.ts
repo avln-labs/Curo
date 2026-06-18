@@ -130,12 +130,33 @@ export const authApi = {
 
 // ── Doctor API ────────────────────────────────────────────────────────────────
 export const doctorApi = {
-  getDashboard: () => api.get('/doctors/dashboard'),
-  getSchedule:  () => api.get('/doctors/schedule'),
-  getProfile:   () => api.get('/doctors/profile'),
+  // Profile
+  getProfile:   () => api.get<{ success: boolean; data: Record<string, unknown> }>('/doctors/profile'),
+  updateProfile: (body: unknown) => api.put<{ success: boolean; message: string }>('/doctors/profile', body),
+
+  // Dashboard
+  getDashboard: () => api.get<{ success: boolean; data: Record<string, unknown> }>('/doctors/dashboard'),
+
+  // Schedule
+  getSchedule:  () => api.get<{ success: boolean; data: Record<string, unknown> }>('/doctors/schedule'),
+  blockDates:   (body: { dates: string[]; reason?: string }) => api.post('/doctors/blocked-dates', body),
+  unblockDates: (body: { dates: string[] }) => api.delete<{ success: boolean }>('/doctors/blocked-dates'),
+
+  // Onboarding wizard
+  saveProfile: (body: unknown) =>
+    api.post<{ success: boolean; message: string; doctor?: Record<string, unknown>; bookingUrl?: string }>(
+      '/doctors/onboarding/profile', body
+    ),
+  saveFees: (body: unknown) =>
+    api.post<{ success: boolean; message: string }>('/doctors/onboarding/fees', body),
+  saveSchedule: (body: unknown) =>
+    api.post<{ success: boolean; message: string }>('/doctors/onboarding/schedule', body),
 };
 
 // ── Patient API ───────────────────────────────────────────────────────────────
 export const patientApi = {
-  getMyRecords: () => api.get('/patients/me'),
+  getMe:        () => api.get<{ success: boolean; data: Record<string, unknown> }>('/patients/me'),
+  getThread:    (patientId: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/patients/${patientId}/records`),
+  updateProfile: (body: unknown) => api.put<{ success: boolean; message: string }>('/patients/me', body),
 };
+

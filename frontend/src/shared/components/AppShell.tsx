@@ -4,11 +4,10 @@ import { useAuth } from '../../features/auth/AuthContext';
 const DOCTOR_NAV = [
   { label: 'Dashboard',      to: '/dashboard',         icon: '⊞' },
   { label: 'Consultations',  to: '/consultations',     icon: '♥' },
-  { label: 'Schedule',       to: '/doctor-schedule',   icon: '◷' },
+  { label: 'Schedule',       to: '/doctor-schedule',   icon: '▷' },
   { label: 'Prescriptions',  to: '/prescriptions',     icon: '✦' },
   { label: 'Records',        to: '/records',            icon: '◈' },
-  { label: 'Payments',       to: '/payments',           icon: '₹' },
-  { label: 'Health Threads', to: '/health-threads',    icon: '⬡' },
+  { label: 'Doctor Setup',   to: '/doctor-onboarding', icon: '✚' },
 ];
 
 const PATIENT_NAV = [
@@ -17,9 +16,9 @@ const PATIENT_NAV = [
   { label: 'Prescriptions',  to: '/prescriptions',     icon: '✦' },
 ];
 
+// Admin Console: internal only — never shown to doctors or patients
 const ADMIN_NAV = [
   { label: 'Admin Console',  to: '/admin',             icon: '🛡' },
-  { label: 'Doctor Setup',   to: '/doctor-onboarding', icon: '✚' },
 ];
 
 function NavSection({ items, pathname }: { items: typeof DOCTOR_NAV; pathname: string }) {
@@ -45,7 +44,8 @@ export function AppShell() {
   const navigate = useNavigate();
 
   const navItems = user?.role === 'DOCTOR' ? DOCTOR_NAV : PATIENT_NAV;
-  const showAdmin = user?.role === 'DOCTOR' || user?.role === 'ADMIN';
+  // Admin Console only visible to ADMIN role — never to doctors or patients
+  const showAdmin = user?.role === 'ADMIN';
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -84,7 +84,7 @@ export function AppShell() {
             <div className="user-avatar">{initials}</div>
             <div className="user-info">
               <div className="user-name">{user?.name || 'User'}</div>
-              <div className="user-role">{user?.role === 'DOCTOR' ? 'Physician' : 'Patient'}</div>
+              <div className="user-role">{user?.role === 'DOCTOR' ? 'Physician' : user?.role === 'ADMIN' ? 'Admin' : 'Patient'}</div>
             </div>
             <button
               onClick={handleLogout}

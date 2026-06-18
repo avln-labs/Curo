@@ -1,173 +1,54 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const PATIENTS = [
-  {
-    id: 's1',
-    name: 'Rohan Kumar',
-    initials: 'RK',
-    age: 34,
-    gender: 'Male',
-    bloodGroup: 'B+',
-    lastVisit: '9 Jun 2026',
-    totalVisits: 4,
-    lastComplaint: 'Viral fever',
-    aiMemorySnippet: 'Recurring fever episodes. Responds to Paracetamol + ORS. No serious illness found.',
-    tags: ['Fever', 'Gastritis'],
-  },
-  {
-    id: 's2',
-    name: 'Priya Mehta',
-    initials: 'PM',
-    age: 27,
-    gender: 'Female',
-    bloodGroup: 'O+',
-    lastVisit: '8 Jun 2026',
-    totalVisits: 3,
-    lastComplaint: 'Migraine headache',
-    aiMemorySnippet: 'Episodic migraine without aura. MRI normal (Sep 2025). Good response to Sumatriptan.',
-    tags: ['Migraine'],
-  },
-  {
-    id: 's3',
-    name: 'Ankit Joshi',
-    initials: 'AJ',
-    age: 45,
-    gender: 'Male',
-    bloodGroup: 'A+',
-    lastVisit: '5 Jun 2026',
-    totalVisits: 2,
-    lastComplaint: 'Back pain — L4–L5',
-    aiMemorySnippet: 'Chronic lower back pain. X-ray showed disc space narrowing. Physiotherapy not yet attempted.',
-    tags: ['Back pain', 'Chronic'],
-  },
-  {
-    id: 'sr4',
-    name: 'Sunita Rao',
-    initials: 'SR',
-    age: 52,
-    gender: 'Female',
-    bloodGroup: 'AB+',
-    lastVisit: '3 Jun 2026',
-    totalVisits: 7,
-    lastComplaint: 'Diabetes follow-up',
-    aiMemorySnippet: 'Type 2 Diabetes Mellitus — 6 years. HbA1c improving (last: 7.2%). On Metformin + Glipizide.',
-    tags: ['Diabetes', 'Hypertension', 'Chronic'],
-  },
-  {
-    id: 'kd5',
-    name: 'Karan Desai',
-    initials: 'KD',
-    age: 31,
-    gender: 'Male',
-    bloodGroup: 'B-',
-    lastVisit: '28 May 2026',
-    totalVisits: 1,
-    lastComplaint: 'Digestive complaint',
-    aiMemorySnippet: 'First visit. Irritable bowel syndrome suspected. Dietary diary advised. No alarm features.',
-    tags: ['Digestive'],
-  },
-  {
-    id: 'mp6',
-    name: 'Meera Pillai',
-    initials: 'MP',
-    age: 39,
-    gender: 'Female',
-    bloodGroup: 'A-',
-    lastVisit: '20 May 2026',
-    totalVisits: 2,
-    lastComplaint: 'Skin rash',
-    aiMemorySnippet: 'Contact dermatitis — likely detergent allergy. Responded to Hydrocortisone cream.',
-    tags: ['Dermatology'],
-  },
-];
-
+/**
+ * HealthThreadPage
+ *
+ * Patient health threads (longitudinal AI memory per patient) will be populated
+ * once the booking engine (Phase 3) is live and patients start booking consultations.
+ *
+ * For now, shows a proper empty state.
+ */
 export function HealthThreadPage() {
-  const [search, setSearch] = useState('');
-
-  const filtered = PATIENTS.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
-  );
-
   return (
     <main className="page">
       <div className="page-header">
-        <div className="flex-between">
-          <div>
-            <h1 className="page-title">Patient Health Threads</h1>
-            <p className="page-subtitle">Longitudinal memory for every patient — the core value of CURO</p>
-          </div>
+        <h1 className="page-title">Patient Health Threads</h1>
+        <p className="page-subtitle">Longitudinal memory for every patient — the core value of CURO</p>
+      </div>
+
+      <div className="card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>⬡</div>
+        <h2 style={{ marginBottom: 8 }}>No patient threads yet</h2>
+        <p className="text-muted text-sm" style={{ maxWidth: 480, margin: '0 auto 24px' }}>
+          Each patient who books a consultation through your Curo link will get their own
+          longitudinal health thread here — with consultation notes, prescriptions, lab reports,
+          and an AI memory summary built over time.
+          <br /><br />
+          Complete your profile setup first, then share your booking link to start accepting patients.
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link to="/doctor-onboarding" className="btn btn-primary">Complete Setup →</Link>
+          <Link to="/dashboard" className="btn btn-secondary">Back to Dashboard</Link>
         </div>
       </div>
 
-      {/* Search */}
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        <input
-          className="input"
-          placeholder="Search patients by name or condition…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: 400 }}
-        />
-      </div>
-
-      {/* Patient thread cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        {filtered.map((p) => (
-          <div
-            key={p.id}
-            className="card"
-            style={{ padding: 'var(--space-3)', display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}
-          >
-            {/* Avatar */}
-            <div className="patient-avatar-lg" style={{ flexShrink: 0 }}>{p.initials}</div>
-
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="flex-between" style={{ marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0 }}>{p.name}</h3>
-                  <span className="text-sm text-muted">{p.age} yrs · {p.gender} · {p.bloodGroup}</span>
-                </div>
-                <span className="text-xs text-muted">Last visit: {p.lastVisit}</span>
-              </div>
-
-              {/* AI memory snippet */}
-              <p
-                style={{
-                  fontSize: '0.8125rem',
-                  color: 'var(--text-secondary)',
-                  marginBottom: 8,
-                  lineHeight: 1.5,
-                  maxWidth: '70ch',
-                }}
-              >
-                {p.aiMemorySnippet}
-              </p>
-
-              {/* Tags + meta */}
-              <div className="flex-between">
-                <div className="pill-list">
-                  {p.tags.map((t) => <span key={t} className="pill">{t}</span>)}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span className="text-xs text-muted">{p.totalVisits} visits</span>
-                  <Link to={`/patient-thread/${p.id}`} className="btn btn-secondary btn-sm">
-                    Open thread →
-                  </Link>
-                </div>
-              </div>
+      <div className="card" style={{ marginTop: 20 }}>
+        <div className="card-header">
+          <h2 className="card-title">What's in a health thread</h2>
+        </div>
+        <div className="grid-3" style={{ gap: 16 }}>
+          {[
+            { icon: '🧠', title: 'AI Memory', desc: 'A running AI summary of the patient\'s history, updated after every visit' },
+            { icon: '📅', title: 'Consultation Timeline', desc: 'Chronological notes, diagnoses, and prescriptions from all visits' },
+            { icon: '🔬', title: 'Reports & Uploads', desc: 'Lab reports and scans uploaded by the patient or your clinic' },
+          ].map((f) => (
+            <div key={f.title} style={{ padding: 16, background: 'var(--surface-raised)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>{f.icon}</div>
+              <div style={{ fontWeight: 600, marginBottom: 4, fontSize: '0.875rem' }}>{f.title}</div>
+              <div className="text-xs text-muted">{f.desc}</div>
             </div>
-          </div>
-        ))}
-
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
-            No patients found matching "{search}"
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </main>
   );

@@ -30,13 +30,6 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ── Demo-mode seed users (used when backend is offline) ───────────────────
-const DEMO_USERS: Record<string, AuthUser> = {
-  '9876543210': { id: 'demo_doctor', name: 'Dr. Arun Sharma', role: 'DOCTOR', mobile: '9876543210', email: 'arun@demo.curo', slug: 'dr-arun-sharma', doctorId: 'doc_1' },
-  '9123456789': { id: 'demo_patient', name: 'Rohan Kumar', role: 'PATIENT', mobile: '9123456789', email: 'rohan@demo.curo', patientId: 'pat_1' },
-  '9000000000': { id: 'demo_admin', name: 'Curo Admin', role: 'ADMIN', mobile: '9000000000' },
-};
-
 // In-memory OTP store for offline demo mode
 const demoOtpStore = new Map<string, boolean>();
 
@@ -88,12 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!demoOtpStore.has(mobile)) return { success: false, message: 'Please request OTP first' };
       demoOtpStore.delete(mobile);
 
-      // Look up demo user or create a generic one
-      const demoUser: AuthUser = DEMO_USERS[mobile] ?? {
+      // Create a generic demo session (no hardcoded accounts)
+      const demoUser: AuthUser = {
         id: `demo_${Date.now()}`,
         name: role === 'DOCTOR' ? 'Demo Doctor' : 'Demo Patient',
         role,
         mobile,
+        needsOnboarding: role === 'DOCTOR',
       };
 
       // Store as a fake JWT session
@@ -102,17 +96,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('curo.user', JSON.stringify(demoUser));
       setUser(demoUser);
 
-      const isNew = !DEMO_USERS[mobile];
-      return { success: true, message: isNew ? 'Demo account created!' : 'Signed in (demo mode)', isNewUser: isNew };
+      return { success: true, message: 'Demo session created. Connect backend for full functionality.', isNewUser: true };
     }
+
 
     // ── Real backend ──
     const { data, error } = await authApi.verifyOtp(mobile, otp, role);
     if (error || !data?.success) return { success: false, message: error || data?.message || 'Invalid OTP' };
 
-    storeTokens(data.accessToken, data.refreshToken, data.user);
-    setUser(data.user as AuthUser);
+    // Map the backend response to the AuthUser shape
+    // Backend sends: { id, mobile, email, role, fullName, doctorId, slug, needsOnboarding, patientId, ... }
+    const backendUser = data.user as Record<string, unknown>;
+    const mappedUser: AuthUser = {
+      id: backendUser.id as string,
+      name: (backendUser.fullName as string) || (backendUser.name as string) || '',
+      role: backendUser.role as AuthRole,
+      mobile: backendUser.mobile as string,
+      email: backendUser.email as string | undefined,
+      slug: backendUser.slug as string | undefined,
+      doctorId: backendUser.doctorId as string | undefined,
+      patientId: backendUser.patientId as string | undefined,
+      needsOnboarding: backendUser.needsOnboarding as boolean | undefined,
+    };
+    storeTokens(data.accessToken, data.refreshToken, mappedUser);
+    setUser(mappedUser);
     return { success: true, message: data.message, isNewUser: data.isNewUser };
+
+
   }, []);
 
   const logout = useCallback(async () => {
