@@ -56,7 +56,13 @@ export function LandingPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(user.role === 'DOCTOR' ? '/dashboard' : '/records');
+      if (user.role === 'DOCTOR') {
+        navigate('/dashboard');
+      } else if (user.role === 'PATIENT' && user.onboardingComplete === false) {
+        navigate('/patient-onboarding');
+      } else {
+        navigate('/records');
+      }
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -117,7 +123,14 @@ export function LandingPage() {
     setPhase('success');
     // Navigate after 1.6s (bar animation)
     setTimeout(() => {
-      navigate(selectedRole === 'DOCTOR' ? '/dashboard' : '/records');
+      if (selectedRole === 'DOCTOR') {
+        navigate('/dashboard');
+      } else if (result.isNewUser || result.needsOnboarding) {
+        // New patients or patients without a complete profile go to onboarding
+        navigate('/patient-onboarding');
+      } else {
+        navigate('/records');
+      }
     }, 1700);
   }
 
@@ -168,7 +181,7 @@ export function LandingPage() {
         {/* Badge */}
         <div className="landing-badge">
           <span className="landing-badge-dot" />
-          Now in early access · Pune, India
+          Now in early access · Bangalore, India
         </div>
 
         {/* H1 */}

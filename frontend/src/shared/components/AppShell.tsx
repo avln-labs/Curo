@@ -11,10 +11,12 @@ const DOCTOR_NAV = [
 ];
 
 const PATIENT_NAV = [
-  { label: 'My Records',     to: '/records',           icon: '◈' },
-  { label: 'Appointments',   to: '/health-threads',    icon: '⬡' },
-  { label: 'Prescriptions',  to: '/prescriptions',     icon: '✦' },
+  { label: 'My Records',          to: '/records',          icon: '◈' },
+  { label: 'My Profile',          to: '/patient-profile',  icon: '👤' },
+  { label: 'Prescriptions',       to: '/prescriptions',    icon: '✦' },
+  { label: 'Book Consultation',   to: '/booking/details',  icon: '📅' },
 ];
+
 
 // Admin Console: internal only — never shown to doctors or patients
 const ADMIN_NAV = [

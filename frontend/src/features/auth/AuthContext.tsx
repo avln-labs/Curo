@@ -14,6 +14,10 @@ export interface AuthUser {
   doctorId?: string;
   patientId?: string;
   needsOnboarding?: boolean;
+  // Patient-specific
+  onboardingComplete?: boolean;
+  gender?: string;
+  age?: number;
 }
 
 interface AuthState {
@@ -24,7 +28,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   sendOtp: (mobile: string, role: 'DOCTOR' | 'PATIENT') => Promise<{ success: boolean; message: string }>;
-  verifyOtp: (mobile: string, otp: string, role: 'DOCTOR' | 'PATIENT') => Promise<{ success: boolean; message: string; isNewUser?: boolean }>;
+  verifyOtp: (mobile: string, otp: string, role: 'DOCTOR' | 'PATIENT') => Promise<{ success: boolean; message: string; isNewUser?: boolean; needsOnboarding?: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -88,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         mobile,
         needsOnboarding: role === 'DOCTOR',
+        // For patients in demo mode, treat as needing onboarding
+        onboardingComplete: role === 'PATIENT' ? false : undefined,
       };
 
       // Store as a fake JWT session
@@ -105,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error || !data?.success) return { success: false, message: error || data?.message || 'Invalid OTP' };
 
     // Map the backend response to the AuthUser shape
-    // Backend sends: { id, mobile, email, role, fullName, doctorId, slug, needsOnboarding, patientId, ... }
+    // Backend sends: { id, mobile, email, role, fullName, doctorId, slug, needsOnboarding, patientId, onboardingComplete, gender, age, ... }
     const backendUser = data.user as Record<string, unknown>;
     const mappedUser: AuthUser = {
       id: backendUser.id as string,
@@ -117,10 +123,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       doctorId: backendUser.doctorId as string | undefined,
       patientId: backendUser.patientId as string | undefined,
       needsOnboarding: backendUser.needsOnboarding as boolean | undefined,
+      onboardingComplete: backendUser.onboardingComplete as boolean | undefined,
+      gender: backendUser.gender as string | undefined,
+      age: backendUser.age as number | undefined,
     };
     storeTokens(data.accessToken, data.refreshToken, mappedUser);
     setUser(mappedUser);
-    return { success: true, message: data.message, isNewUser: data.isNewUser };
+    return {
+      success: true,
+      message: data.message,
+      isNewUser: data.isNewUser,
+      needsOnboarding: mappedUser.needsOnboarding,
+    };
+
 
 
   }, []);

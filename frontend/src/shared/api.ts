@@ -155,8 +155,12 @@ export const doctorApi = {
 
 // ── Patient API ───────────────────────────────────────────────────────────────
 export const patientApi = {
-  getMe:        () => api.get<{ success: boolean; data: Record<string, unknown> }>('/patients/me'),
-  getThread:    (patientId: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/patients/${patientId}/records`),
-  updateProfile: (body: unknown) => api.put<{ success: boolean; message: string }>('/patients/me', body),
+  getMe:              () => api.get<{ success: boolean; data: Record<string, unknown> }>('/patients/me'),
+  getMyRecords:       () => api.get<{ success: boolean; data: Record<string, unknown> }>('/patients/me/records'),
+  getThread:          (patientId: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/patients/${patientId}/records`),
+  updateProfile:      (body: unknown) => api.put<{ success: boolean; message: string }>('/patients/me', body),
+  completeOnboarding: (body: { fullName: string; gender: string; age: number }) =>
+    api.post<{ success: boolean; message: string; profile?: Record<string, unknown> }>('/patients/me/onboarding', body),
 };
+
 

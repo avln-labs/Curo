@@ -55,6 +55,9 @@ interface PatientRow {
   id: string;
   user_id: string;
   full_name: string;
+  onboarding_complete: boolean;
+  gender: string | null;
+  age: number | null;
 }
 
 interface RefreshTokenRow {
@@ -68,7 +71,7 @@ interface RefreshTokenRow {
 // Cleared on server restart — for dev/demo mode only.
 interface InMemUser { id: string; mobile: string; email: string | null; role: UserRole; is_active: boolean; }
 interface InMemDoctor { id: string; user_id: string; slug: string; full_name: string; verification_status: string; booking_link_active: boolean; onboarding_step: number; }
-interface InMemPatient { id: string; user_id: string; full_name: string; }
+interface InMemPatient { id: string; user_id: string; full_name: string; onboarding_complete: boolean; gender: string | null; age: number | null; }
 interface InMemRefresh { userId: string; expiresAt: number; }
 
 const memUsers = new Map<string, InMemUser>();          // mobile → user
@@ -156,7 +159,9 @@ export const AuthService = {
           );
         } else if (role === 'PATIENT') {
           patientProfile = await db.queryOne<PatientRow>(
-            `INSERT INTO patients (user_id, full_name) VALUES ($1, $2) RETURNING id, user_id, full_name`,
+            `INSERT INTO patients (user_id, full_name, onboarding_complete)
+             VALUES ($1, $2, false)
+             RETURNING id, user_id, full_name, onboarding_complete, gender, age`,
             [user.id, '']
           );
         }
@@ -175,7 +180,7 @@ export const AuthService = {
           );
         } else if (role === 'PATIENT') {
           patientProfile = await db.queryOne<PatientRow>(
-            `SELECT id, user_id, full_name FROM patients WHERE user_id = $1`,
+            `SELECT id, user_id, full_name, onboarding_complete, gender, age FROM patients WHERE user_id = $1`,
             [user.id]
           );
         }
@@ -208,7 +213,7 @@ export const AuthService = {
           memDoctors.set(newId, doc);
           doctorProfile = doc;
         } else if (role === 'PATIENT') {
-          const pat: InMemPatient = { id: `pat_${Date.now()}`, user_id: newId, full_name: '' };
+          const pat: InMemPatient = { id: `pat_${Date.now()}`, user_id: newId, full_name: '', onboarding_complete: false, gender: null, age: null };
           memPatients.set(newId, pat);
           patientProfile = pat;
         }
@@ -264,6 +269,10 @@ export const AuthService = {
     if (patientProfile) {
       userPayload.patientId = patientProfile.id;
       userPayload.fullName = patientProfile.full_name;
+      userPayload.onboardingComplete = patientProfile.onboarding_complete;
+      userPayload.needsOnboarding = !patientProfile.onboarding_complete;
+      userPayload.gender = patientProfile.gender;
+      userPayload.age = patientProfile.age;
     }
 
     return {

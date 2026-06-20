@@ -1,20 +1,21 @@
 /**
  * Patient Routes
  *
- * GET  /api/v1/patients/me          → Authenticated patient's own profile
- * PUT  /api/v1/patients/me          → Update own profile (name, age, gender, etc.)
- * GET  /api/v1/patients/me/records  → Full health thread (appointments + Rx + docs)
+ * POST /api/v1/patients/me/onboarding  → Complete initial profile (name, gender, age) — one-time
+ * GET  /api/v1/patients/me             → Authenticated patient's own profile
+ * PUT  /api/v1/patients/me             → Update own profile (with restriction enforcement)
+ * GET  /api/v1/patients/me/records     → Full health thread (appointments + Rx + docs)
  *
  * Doctor-access:
- * GET  /api/v1/patients/:id         → Get any patient by ID (doctor/admin only)
- * GET  /api/v1/patients/:id/records → Patient health thread (doctor/admin only)
+ * GET  /api/v1/patients/:id            → Get any patient by ID (doctor/admin only)
+ * GET  /api/v1/patients/:id/records    → Patient health thread (doctor/admin only)
  */
 
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../shared/middleware';
 import type { AuthRequest } from '../shared/middleware';
 import { PatientService } from './service';
-import { UpdatePatientProfileSchema } from './schema';
+import { PatientOnboardingSchema, UpdatePatientProfileSchema } from './schema';
 
 export const patientRouter = Router();
 
@@ -24,6 +25,16 @@ function validationError(res: any, errors: any) {
     error: { code: 'VALIDATION_ERROR', message: 'Invalid input', details: errors.flatten() },
   });
 }
+
+// ─── POST /patients/me/onboarding — initial profile setup (one-time) ─────────
+
+patientRouter.post('/me/onboarding', requireAuth, requireRole('PATIENT'), async (req: AuthRequest, res) => {
+  const parsed = PatientOnboardingSchema.safeParse(req.body);
+  if (!parsed.success) return validationError(res, parsed.error);
+
+  const result = await PatientService.completeOnboarding(req.user!.userId, parsed.data);
+  return res.status(result.success ? 200 : 400).json(result);
+});
 
 // ─── GET /patients/me — authenticated patient's own profile ──────────────────
 
