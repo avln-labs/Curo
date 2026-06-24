@@ -1,0 +1,1 @@
+export { DoctorPublicPage } from './DoctorPublicPage';

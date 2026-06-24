@@ -12,6 +12,7 @@ interface PatientRow {
   user_id: string;
   full_name: string;
   age: number | null;
+  date_of_birth: string | null;
   gender: string | null;
   blood_group: string | null;
   allergies: string[];
@@ -95,7 +96,7 @@ export const PatientService = {
   },
 
   /**
-   * Initial patient onboarding — saves name, gender, age.
+   * Initial patient onboarding — saves name, gender, dateOfBirth.
    * Sets onboarding_complete = true, gender_locked = true, age_locked = true.
    * Can only be called once (subsequent calls return an error if already complete).
    */
@@ -113,18 +114,18 @@ export const PatientService = {
       return { success: false, message: 'Profile has already been set up.' };
     }
 
-    // Save name, gender, age and lock gender/age for future updates
+    // Save name, gender, dateOfBirth and lock gender/age for future updates
     await db.query(
       `UPDATE patients
        SET full_name          = $1,
            gender             = $2,
-           age                = $3,
+           date_of_birth      = $3::date,
            onboarding_complete = true,
            gender_locked      = true,
            age_locked         = true,
            updated_at         = NOW()
        WHERE id = $4`,
-      [data.fullName.trim(), data.gender, data.age, existing.id]
+      [data.fullName.trim(), data.gender, data.dateOfBirth, existing.id]
     );
 
     // Also update the user's name/display in the users record (fullName tracking)
@@ -136,7 +137,7 @@ export const PatientService = {
     return {
       success: true,
       message: 'Profile set up successfully.',
-      profile: { fullName: data.fullName, gender: data.gender, age: data.age },
+      profile: { fullName: data.fullName, gender: data.gender, dateOfBirth: data.dateOfBirth },
     };
   },
 
@@ -176,12 +177,12 @@ export const PatientService = {
       params.push(data.fullName);
     }
 
-    if (data.age !== undefined) {
+    if (data.dateOfBirth !== undefined) {
       if (current.age_locked) {
-        errors.push('Age can only be updated once after initial profile setup.');
+        errors.push('Date of Birth can only be updated once after initial profile setup.');
       } else {
-        updates.push(`age = $${idx++}`);
-        params.push(data.age);
+        updates.push(`date_of_birth = $${idx++}::date`);
+        params.push(data.dateOfBirth);
         updates.push(`age_locked = true`);
       }
     }

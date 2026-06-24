@@ -4,7 +4,7 @@
  * All functions return typed results with { data, error } shape.
  */
 
-export const API_BASE = 'http://localhost:4000/api/v1';
+export const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 // ── Token storage ────────────────────────────────────────────────────────────
 const STORAGE_KEY_ACCESS  = 'curo.accessToken';
@@ -141,6 +141,7 @@ export const doctorApi = {
   getSchedule:  () => api.get<{ success: boolean; data: Record<string, unknown> }>('/doctors/schedule'),
   blockDates:   (body: { dates: string[]; reason?: string }) => api.post('/doctors/blocked-dates', body),
   unblockDates: (body: { dates: string[] }) => api.delete<{ success: boolean }>('/doctors/blocked-dates'),
+  updateUpi:    (body: { upiId?: string; upiQrUrl?: string }) => api.put<{ success: boolean; message: string }>('/doctors/upi', body),
 
   // Onboarding wizard
   saveProfile: (body: unknown) =>
@@ -151,6 +152,8 @@ export const doctorApi = {
     api.post<{ success: boolean; message: string }>('/doctors/onboarding/fees', body),
   saveSchedule: (body: unknown) =>
     api.post<{ success: boolean; message: string }>('/doctors/onboarding/schedule', body),
+  completeOnboarding: (body: { upiId?: string; upiQrUrl?: string }) =>
+    api.post<{ success: boolean; message: string }>('/doctors/onboarding/complete', body),
 };
 
 // ── Patient API ───────────────────────────────────────────────────────────────
@@ -159,8 +162,31 @@ export const patientApi = {
   getMyRecords:       () => api.get<{ success: boolean; data: Record<string, unknown> }>('/patients/me/records'),
   getThread:          (patientId: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/patients/${patientId}/records`),
   updateProfile:      (body: unknown) => api.put<{ success: boolean; message: string }>('/patients/me', body),
-  completeOnboarding: (body: { fullName: string; gender: string; age: number }) =>
+  completeOnboarding: (body: { fullName: string; gender: string; dateOfBirth: string }) =>
     api.post<{ success: boolean; message: string; profile?: Record<string, unknown> }>('/patients/me/onboarding', body),
 };
 
+// ── Bookings API ──────────────────────────────────────────────────────────────
+export const bookingsApi = {
+  create: (body: unknown) => api.post<{ success: boolean; appointment: Record<string, unknown>; message?: string }>('/bookings', body),
+  confirmPayment: (id: string, body: { utrNumber?: string }) => api.post<{ success: boolean; message: string }>(`/bookings/${id}/confirm`, body),
+  getMy: () => api.get<{ success: boolean; data: Record<string, unknown>[] }>('/bookings/my'),
+  getById: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/bookings/${id}`),
+};
 
+// ── Consultations API ─────────────────────────────────────────────────────────
+export const consultationsApi = {
+  getToday: () => api.get<{ success: boolean; data: { today: string; upcoming: any[]; live: any[]; completed: any[] } }>('/consultations/today'),
+  getPast: (limit?: number) => api.get<{ success: boolean; data: any[] }>(`/consultations/past${limit ? `?limit=${limit}` : ''}`),
+  getById: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/consultations/${id}`),
+  start: (id: string, body?: { meetLink?: string }) => api.post<{ success: boolean; message: string }>(`/consultations/${id}/start`, body || {}),
+  complete: (id: string) => api.post<{ success: boolean; message: string; code?: string }>(`/consultations/${id}/complete`, {}),
+};
+
+// ── Prescriptions API ─────────────────────────────────────────────────────────
+export const prescriptionsApi = {
+  create: (body: unknown) => api.post<{ success: boolean; message: string; prescriptionId: string }>('/prescriptions', body),
+  getById: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/prescriptions/${id}`),
+  getByAppointmentId: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/prescriptions/appointment/${id}`),
+  // Note: PDF download is handled via standard <a> link since it returns a file blob
+};

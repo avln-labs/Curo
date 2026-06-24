@@ -11,45 +11,39 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { patientApi } from '../../../shared/api';
 
 const GENDER_OPTIONS = [
-  { value: 'male',              label: 'Male' },
-  { value: 'female',            label: 'Female' },
-  { value: 'other',             label: 'Other' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+  { value: 'male',   label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other',  label: 'Other' },
 ];
 
 export function PatientOnboardingPage() {
   const navigate = useNavigate();
-  const { user, verifyOtp } = useAuth();
+  const location = useLocation();
+  const { user, mutateUser } = useAuth();
 
   const [fullName, setFullName]   = useState('');
   const [gender, setGender]       = useState('');
-  const [age, setAge]             = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
-
-  // Suppress unused import warning for verifyOtp
-  void verifyOtp;
 
   async function handleSubmit() {
     setError('');
 
     if (!fullName.trim()) return setError('Please enter your full name.');
     if (!gender) return setError('Please select your gender.');
-    const ageNum = parseInt(age, 10);
-    if (!age || isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-      return setError('Please enter a valid age (1–120).');
-    }
+    if (!dateOfBirth) return setError('Please enter your date of birth.');
 
     setSaving(true);
     const { data, error: apiErr } = await patientApi.completeOnboarding({
       fullName: fullName.trim(),
       gender,
-      age: ageNum,
+      dateOfBirth,
     });
     setSaving(false);
 
@@ -57,20 +51,12 @@ export function PatientOnboardingPage() {
       return setError(apiErr || data?.message || 'Failed to save profile. Please try again.');
     }
 
-    // Update localStorage user with new name so the sidebar reflects it immediately
-    const stored = localStorage.getItem('curo.user');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        parsed.name = fullName.trim();
-        parsed.onboardingComplete = true;
-        parsed.gender = gender;
-        parsed.age = ageNum;
-        localStorage.setItem('curo.user', JSON.stringify(parsed));
-      } catch {
-        // ignore
-      }
-    }
+    mutateUser({
+      name: fullName.trim(),
+      onboardingComplete: true,
+      gender,
+      dateOfBirth,
+    });
 
     navigate('/records', { replace: true });
   }
@@ -192,24 +178,20 @@ export function PatientOnboardingPage() {
             </div>
           </div>
 
-          {/* Age */}
+          {/* Date of Birth */}
           <div className="form-group">
             <label className="form-label">
-              Age <span style={{ color: 'var(--error)' }}>*</span>
+              Date of Birth <span style={{ color: 'var(--error)' }}>*</span>
             </label>
             <input
-              id="patient-age"
               className="input"
-              type="number"
-              placeholder="e.g. 28"
-              min={1}
-              max={120}
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              style={{ maxWidth: 140 }}
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
             />
             <div className="form-hint" style={{ marginTop: 4 }}>
-              Age can only be set once and cannot be changed later.
+              Date of birth can only be set once and cannot be changed later.
             </div>
           </div>
 

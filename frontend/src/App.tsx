@@ -1,11 +1,7 @@
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { LandingPage } from './features/auth/LandingPage';
 import { DoctorOnboardingPage, DoctorDashboardPage, DoctorSchedulePage } from './features/doctor-onboarding';
-import { BookingDetails } from './features/patient-booking/components/BookingDetails';
-import { BookingSymptoms } from './features/patient-booking/components/BookingSymptoms';
-import { BookingSlotSelection } from './features/patient-booking/components/BookingSlotSelection';
-import { BookingPayment } from './features/patient-booking/components/BookingPayment';
-import { BookingConfirmation } from './features/patient-booking/components/BookingConfirmation';
+import { DoctorPublicPage } from './features/doctor-booking';
 import { PatientThreadPage } from './features/patient-thread';
 import { ConsultationDashboard } from './features/consultations';
 import { PrescriptionPage } from './features/prescriptions';
@@ -48,13 +44,9 @@ function RequirePatient({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <Routes>
-      {/* Public: landing + booking flow */}
+      {/* Public: landing + doctor booking page */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/booking/details"      element={<BookingDetails />} />
-      <Route path="/booking/symptoms"     element={<BookingSymptoms />} />
-      <Route path="/booking/slot"         element={<BookingSlotSelection />} />
-      <Route path="/booking/payment"      element={<BookingPayment />} />
-      <Route path="/booking/confirmation" element={<BookingConfirmation />} />
+      <Route path="/dr/:slug" element={<DoctorPublicPage />} />
 
       {/*
         Patient onboarding — standalone (no AppShell sidebar).

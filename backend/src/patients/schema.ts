@@ -2,11 +2,11 @@ import { z } from 'zod';
 
 // ── Initial onboarding (new patient, one-time) ────────────────────────────────
 export const PatientOnboardingSchema = z.object({
-  fullName: z.string().min(1, 'Name is required').max(255),
-  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say'], {
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(255),
+  gender: z.enum(['male', 'female', 'other'], {
     errorMap: () => ({ message: 'Please select a gender option' }),
   }),
-  age: z.number({ invalid_type_error: 'Age must be a number' }).int().min(1).max(120),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dateOfBirth must be YYYY-MM-DD'),
 });
 
 export type PatientOnboardingData = z.infer<typeof PatientOnboardingSchema>;
@@ -19,8 +19,8 @@ export const UpdatePatientProfileSchema = z.object({
   allergies:  z.array(z.string().min(1).max(100)).optional(),
   email:      z.string().email('Invalid email address').optional(),
   // These are one-time: backend enforces lock; frontend shows them as read-only after first set
-  age:        z.number().int().min(1).max(120).optional(),
-  gender:     z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  gender:     z.enum(['male', 'female', 'other']).optional(),
 });
 
 export type UpdatePatientProfileData = z.infer<typeof UpdatePatientProfileSchema>;

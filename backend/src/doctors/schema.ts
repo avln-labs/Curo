@@ -4,14 +4,8 @@ import { z } from 'zod';
 
 export const OnboardingProfileSchema = z.object({
   fullName: z.string().min(2, 'Name must be at least 2 characters').max(255),
-  qualifications: z.array(z.string().min(1)).min(1, 'At least one qualification is required'),
   specialisations: z.array(z.string().min(1)).min(1, 'At least one specialisation is required'),
-  registrationNumber: z.string().min(3, 'Registration number is required').max(50),
-  registrationCouncil: z.string().min(2, 'Council name is required').max(100),
-  clinicName: z.string().max(255).optional(),
-  city: z.string().min(2, 'City is required').max(100),
-  bio: z.string().max(500).optional(),
-  languages: z.array(z.string()).min(1, 'At least one language is required'),
+  city: z.string().min(2, 'City is required').max(100).optional(),
   email: z.string().email().optional(),
   // Optional slug override (auto-generated if not provided)
   slug: z
@@ -60,9 +54,9 @@ const ScheduleDaySchema = z.object({
 
 export const OnboardingScheduleSchema = z.object({
   schedule: z.array(ScheduleDaySchema),
-  bufferMinutes: z.number().int().min(0).max(30).default(5),
-  maxPatientsPerDay: z.number().int().min(1).max(100).default(30),
-  minBookingAdvanceMinutes: z.number().int().min(0).max(1440).default(30),
+  bufferMinutes: z.number().int().min(0).max(30).default(0),
+  maxPatientsPerDay: z.number().int().min(1).max(100).default(50),
+  minBookingAdvanceMinutes: z.number().int().min(0).max(1440).default(0),
 });
 
 export type OnboardingScheduleData = z.infer<typeof OnboardingScheduleSchema>;

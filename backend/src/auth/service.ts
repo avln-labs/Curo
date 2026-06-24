@@ -178,11 +178,32 @@ export const AuthService = {
             `SELECT id, user_id, slug, full_name, verification_status, booking_link_active, onboarding_step FROM doctors WHERE user_id = $1`,
             [user.id]
           );
+          if (!doctorProfile) {
+            const slug = generateSlug('doctor');
+            doctorProfile = await db.queryOne<DoctorRow>(
+              `INSERT INTO doctors (user_id, slug, full_name, verification_status, booking_link_active, onboarding_step)
+               VALUES ($1, $2, $3, 'pending', false, 0)
+               RETURNING id, user_id, slug, full_name, verification_status, booking_link_active, onboarding_step`,
+              [user.id, slug, '']
+            );
+            await db.query(
+              `INSERT INTO doctor_settings (doctor_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+              [doctorProfile?.id]
+            );
+          }
         } else if (role === 'PATIENT') {
           patientProfile = await db.queryOne<PatientRow>(
             `SELECT id, user_id, full_name, onboarding_complete, gender, age FROM patients WHERE user_id = $1`,
             [user.id]
           );
+          if (!patientProfile) {
+            patientProfile = await db.queryOne<PatientRow>(
+              `INSERT INTO patients (user_id, full_name, onboarding_complete)
+               VALUES ($1, $2, false)
+               RETURNING id, user_id, full_name, onboarding_complete, gender, age`,
+              [user.id, '']
+            );
+          }
         }
       }
 
@@ -222,8 +243,22 @@ export const AuthService = {
         if (memUser.role !== role) {
           return { success: false, code: 'FORBIDDEN', message: `This number is registered as a ${memUser.role.toLowerCase()}. Please select the correct role.` };
         }
-        doctorProfile = memDoctors.get(memUser.id) ?? null;
-        patientProfile = memPatients.get(memUser.id) ?? null;
+        if (role === 'DOCTOR') {
+          doctorProfile = memDoctors.get(memUser.id) ?? null;
+          if (!doctorProfile) {
+            const slug = `dr-${crypto.randomBytes(4).toString('hex')}`;
+            const doc: InMemDoctor = { id: `doc_${Date.now()}`, user_id: memUser.id, slug, full_name: '', verification_status: 'pending', booking_link_active: false, onboarding_step: 0 };
+            memDoctors.set(memUser.id, doc);
+            doctorProfile = doc;
+          }
+        } else if (role === 'PATIENT') {
+          patientProfile = memPatients.get(memUser.id) ?? null;
+          if (!patientProfile) {
+            const pat: InMemPatient = { id: `pat_${Date.now()}`, user_id: memUser.id, full_name: '', onboarding_complete: false, gender: null, age: null };
+            memPatients.set(memUser.id, pat);
+            patientProfile = pat;
+          }
+        }
       }
 
       userId = memUser.id;

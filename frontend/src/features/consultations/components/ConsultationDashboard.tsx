@@ -1,56 +1,283 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { consultationsApi, prescriptionsApi } from '../../../shared/api';
 
-/**
- * ConsultationDashboard
- *
- * Active consultation sessions will be fetched here once the booking engine
- * (Phase 3) is live. For now, shows a proper empty state.
- *
- * The prescription builder and AI pre-consult summary remain fully interactive
- * but are gated behind a real appointment being selected.
- */
+interface PatientAppt {
+  id: string;
+  appointment_code: string;
+  status: string;
+  slot_time: string;
+  chief_complaint: string;
+  patient_name: string;
+  date_of_birth: string;
+  gender: string;
+  meet_link?: string;
+  prescription_id?: string;
+}
+
 export function ConsultationDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [upcoming, setUpcoming] = useState<PatientAppt[]>([]);
+  const [live, setLive] = useState<PatientAppt[]>([]);
+  const [completed, setCompleted] = useState<PatientAppt[]>([]);
+  const [error, setError] = useState('');
+
+  // Active consultation state
+  const [activeAppt, setActiveAppt] = useState<PatientAppt | null>(null);
+  const [meetLinkInput, setMeetLinkInput] = useState('');
+  const [starting, setStarting] = useState(false);
+  const [completing, setCompleting] = useState(false);
+
+  // Prescription builder state
+  const [medications, setMedications] = useState([{ drugName: '', dose: '', frequency: '', duration: '', instructions: '' }]);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [advice, setAdvice] = useState('');
+  const [savingRx, setSavingRx] = useState(false);
+  const [rxSaved, setRxSaved] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const res = await consultationsApi.getToday();
+      if (res.data?.success) {
+        setUpcoming(res.data.data.upcoming || []);
+        setLive(res.data.data.live || []);
+        setCompleted(res.data.data.completed || []);
+      }
+    } catch (err: any) {
+      setError('Failed to load appointments.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleStart = async (appt: PatientAppt) => {
+    setStarting(true);
+    const res = await consultationsApi.start(appt.id, { meetLink: meetLinkInput });
+    setStarting(false);
+    if (res.data?.success) {
+      setActiveAppt({ ...appt, status: 'in_progress', meet_link: meetLinkInput });
+      loadData();
+    } else {
+      setError((res.data as any)?.error?.message || res.data?.message || 'Failed to start consultation.');
+    }
+  };
+
+  const handleSaveRx = async () => {
+    if (!activeAppt) return;
+    const validMeds = medications.filter(m => m.drugName.trim() !== '');
+    if (validMeds.length === 0) return setError('Add at least one medication.');
+    
+    setSavingRx(true);
+    const res = await prescriptionsApi.create({
+      appointmentId: activeAppt.id,
+      diagnosis,
+      advice,
+      medications: validMeds
+    });
+    setSavingRx(false);
+    
+    if (res.data?.success) {
+      setRxSaved(true);
+      setActiveAppt({ ...activeAppt, prescription_id: res.data.prescriptionId });
+      loadData();
+    } else {
+      setError((res.data as any)?.error?.message || res.data?.message || 'Failed to save prescription.');
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!activeAppt) return;
+    if (!rxSaved && !activeAppt.prescription_id) {
+      return setError('Cannot end consultation without a prescription. Please save the prescription first.');
+    }
+    
+    setCompleting(true);
+    const res = await consultationsApi.complete(activeAppt.id);
+    setCompleting(false);
+    
+    if (res.data?.success) {
+      setActiveAppt(null);
+      setRxSaved(false);
+      setMedications([{ drugName: '', dose: '', frequency: '', duration: '', instructions: '' }]);
+      setDiagnosis('');
+      setAdvice('');
+      loadData();
+    } else {
+      setError((res.data as any)?.error?.message || res.data?.message || 'Failed to complete consultation.');
+    }
+  };
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return '?';
+    const diff = Date.now() - new Date(dob).getTime();
+    return Math.abs(new Date(diff).getUTCFullYear() - 1970);
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading dashboard...</div>;
+
   return (
-    <main className="page">
+    <main className="page" style={{ maxWidth: 1200 }}>
       <div className="page-header">
         <h1 className="page-title">Consultation Workspace</h1>
-        <p className="page-subtitle">Active sessions — patient snapshot · notes · prescription builder</p>
+        <p className="page-subtitle">Manage today's appointments, issue prescriptions, and conduct online consults.</p>
       </div>
 
-      {/* Empty state */}
-      <div className="card" style={{ textAlign: 'center', padding: '48px 32px' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
-        <h2 style={{ marginBottom: 8 }}>No active consultations</h2>
-        <p className="text-muted text-sm" style={{ maxWidth: 420, margin: '0 auto 24px' }}>
-          Confirmed appointments will appear here with a full patient snapshot, AI pre-consult
-          summary, consultation notes editor, and prescription builder.
-          <br /><br />
-          Booking & appointment management is coming in Phase 3.
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
-          <Link to="/doctor-onboarding" className="btn btn-secondary">Complete Setup →</Link>
-        </div>
-      </div>
+      {error && <div style={{ background: 'var(--error-bg)', color: 'var(--error)', padding: '10px 14px', borderRadius: 'var(--radius)', marginBottom: 16 }}>{error}</div>}
 
-      {/* Feature preview */}
-      <div className="card" style={{ marginTop: 20 }}>
-        <div className="card-header">
-          <h2 className="card-title">What you'll see here</h2>
-        </div>
-        <div className="grid-3" style={{ gap: 16 }}>
-          {[
-            { icon: '👤', title: 'Patient Snapshot', desc: 'Blood group, allergies, past prescriptions, uploaded reports' },
-            { icon: '✦', title: 'AI Pre-Consult Brief', desc: 'Summarises patient history and current symptoms before you begin' },
-            { icon: '📋', title: 'Prescription Builder', desc: 'Issue Rx with medications, investigations, follow-up — send via WhatsApp' },
-          ].map((f) => (
-            <div key={f.title} style={{ padding: 16, background: 'var(--surface-raised)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>{f.icon}</div>
-              <div style={{ fontWeight: 600, marginBottom: 4, fontSize: '0.875rem' }}>{f.title}</div>
-              <div className="text-xs text-muted">{f.desc}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: activeAppt ? '300px 1fr' : '1fr', gap: 24, alignItems: 'flex-start' }}>
+        
+        {/* Left column: List of appointments */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {live.length > 0 && !activeAppt && (
+            <div className="card" style={{ border: '1px solid var(--primary)' }}>
+              <div className="card-header" style={{ background: 'var(--primary-muted)', padding: '12px 16px' }}>
+                <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }}></span>
+                  Live Session
+                </h3>
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ fontWeight: 600 }}>{live[0].patient_name}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{calculateAge(live[0].date_of_birth)}y, {live[0].gender}</div>
+                <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 12 }} onClick={() => setActiveAppt(live[0])}>Resume Consult</button>
+              </div>
             </div>
-          ))}
+          )}
+
+          <div className="card">
+            <div className="card-header"><h2 className="card-title" style={{ fontSize: '1rem' }}>Upcoming Today</h2></div>
+            {upcoming.length === 0 ? (
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)' }}>No more appointments today.</div>
+            ) : (
+              upcoming.map(a => (
+                <div key={a.id} style={{ borderBottom: '1px solid var(--border)', padding: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600 }}>{a.patient_name}</span>
+                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{a.slot_time.slice(0,5)}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{calculateAge(a.date_of_birth)}y, {a.gender}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>{a.chief_complaint}</div>
+                  {!activeAppt && (
+                    <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 12 }} onClick={() => setActiveAppt(a)}>Prepare</button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
+
+        {/* Right column: Active workspace */}
+        {activeAppt ? (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-raised)' }}>
+              <div>
+                <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: 4 }}>{activeAppt.patient_name}</h2>
+                <span className="text-muted text-sm">{calculateAge(activeAppt.date_of_birth)}y, {activeAppt.gender} | Apt: {activeAppt.appointment_code}</span>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setActiveAppt(null)}>Close Workspace</button>
+            </div>
+
+            <div style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+              
+              {/* Left Panel: Start & Meet Link */}
+              <div>
+                <h3 style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 12 }}>Consultation Control</h3>
+                
+                {activeAppt.status === 'confirmed' ? (
+                  <div style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--background)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Google Meet Link (Optional)</label>
+                      <input type="text" className="input" placeholder="https://meet.google.com/xxx-xxxx-xxx" value={meetLinkInput} onChange={e => setMeetLinkInput(e.target.value)} />
+                    </div>
+                    <button className={`btn btn-primary ${starting ? 'loading' : ''}`} style={{ width: '100%', marginTop: 8 }} onClick={() => handleStart(activeAppt)} disabled={starting}>Start Consultation</button>
+                  </div>
+                ) : (
+                  <div style={{ padding: 16, border: '1px solid var(--primary)', borderRadius: 'var(--radius)', background: 'var(--primary-muted)' }}>
+                    <div style={{ color: 'var(--primary)', fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="live-indicator"></span> Session is Live
+                    </div>
+                    {activeAppt.meet_link ? (
+                      <a href={activeAppt.meet_link} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ width: '100%', display: 'block', textAlign: 'center' }}>Open Google Meet</a>
+                    ) : (
+                      <div className="text-muted text-sm">No meet link provided.</div>
+                    )}
+                    
+                    <button 
+                      className={`btn btn-primary ${completing ? 'loading' : ''}`} 
+                      style={{ width: '100%', marginTop: 24 }} 
+                      onClick={handleComplete} 
+                      disabled={completing || (!rxSaved && !activeAppt.prescription_id)}
+                    >
+                      End Consultation
+                    </button>
+                    {(!rxSaved && !activeAppt.prescription_id) && (
+                      <div className="text-sm" style={{ color: 'var(--warning)', marginTop: 8, textAlign: 'center' }}>Save prescription to end session.</div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ marginTop: 24 }}>
+                  <h3 style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 12 }}>Chief Complaint</h3>
+                  <div style={{ padding: 16, background: 'var(--surface-raised)', borderRadius: 'var(--radius)' }}>
+                    {activeAppt.chief_complaint}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Panel: Prescription Builder */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', margin: 0 }}>Prescription</h3>
+                  {activeAppt.prescription_id && <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>✓ Saved</span>}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Diagnosis</label>
+                    <input className="input" value={diagnosis} onChange={e => setDiagnosis(e.target.value)} placeholder="E.g., Viral Fever" disabled={!!activeAppt.prescription_id} />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Medications</label>
+                    {medications.map((m, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: 8, background: 'var(--background)' }}>
+                        <input className="input" placeholder="Drug Name" value={m.drugName} onChange={e => { const nm = [...medications]; nm[i].drugName = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} style={{ gridColumn: '1 / -1' }} />
+                        <input className="input" placeholder="Dose (e.g. 500mg)" value={m.dose} onChange={e => { const nm = [...medications]; nm[i].dose = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} />
+                        <input className="input" placeholder="Freq (e.g. 1-0-1)" value={m.frequency} onChange={e => { const nm = [...medications]; nm[i].frequency = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} />
+                        <input className="input" placeholder="Duration (e.g. 5 days)" value={m.duration} onChange={e => { const nm = [...medications]; nm[i].duration = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} style={{ gridColumn: '1 / -1' }} />
+                      </div>
+                    ))}
+                    {!activeAppt.prescription_id && (
+                      <button className="btn btn-secondary btn-sm" onClick={() => setMedications([...medications, { drugName: '', dose: '', frequency: '', duration: '', instructions: '' }])}>+ Add Medicine</button>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Advice / Notes</label>
+                    <textarea className="input" rows={2} value={advice} onChange={e => setAdvice(e.target.value)} placeholder="Rest, drink fluids..." disabled={!!activeAppt.prescription_id} />
+                  </div>
+
+                  {!activeAppt.prescription_id && (
+                    <button className={`btn btn-primary ${savingRx ? 'loading' : ''}`} onClick={handleSaveRx} disabled={savingRx || medications[0].drugName === ''}>Save Prescription</button>
+                  )}
+                  {activeAppt.prescription_id && (
+                    <a href={`${import.meta.env.VITE_API_URL}/prescriptions/${activeAppt.prescription_id}/pdf`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ textAlign: 'center' }}>Download PDF</a>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        ) : (
+          <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, color: 'var(--text-tertiary)', flexDirection: 'column', gap: 16 }}>
+            <div style={{ fontSize: 48 }}>👨‍⚕️</div>
+            <div>Select an appointment to open workspace</div>
+          </div>
+        )}
       </div>
     </main>
   );

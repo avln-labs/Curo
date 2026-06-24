@@ -10,6 +10,8 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@types/multer": "^2.1.0",
+    "@types/pdfkit": "^0.17.6",
     "@types/uuid": "^10.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -17,6 +19,8 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
+    "pdfkit": "^0.19.1",
     "pg": "^8.11.1",
     "twilio": "^6.0.2",
     "uuid": "^14.0.0",

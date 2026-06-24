@@ -231,7 +231,9 @@ export function RecordsPage() {
                     <td className="text-sm">{new Date(p.created_at).toLocaleDateString('en-IN')}</td>
                     <td className="text-sm">{p.diagnosis}</td>
                     <td className="text-sm">{p.doctor_name}</td>
-                    <td><button className="btn btn-ghost btn-sm">Download</button></td>
+                    <td>
+                      <a href={`${import.meta.env.VITE_API_URL}/prescriptions/${p.id}/pdf`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">Download PDF</a>
+                    </td>
                   </tr>
                 ))}
               </tbody>

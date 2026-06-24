@@ -17,7 +17,7 @@ export interface AuthUser {
   // Patient-specific
   onboardingComplete?: boolean;
   gender?: string;
-  age?: number;
+  dateOfBirth?: string;
 }
 
 interface AuthState {
@@ -30,6 +30,7 @@ interface AuthContextValue extends AuthState {
   sendOtp: (mobile: string, role: 'DOCTOR' | 'PATIENT') => Promise<{ success: boolean; message: string }>;
   verifyOtp: (mobile: string, otp: string, role: 'DOCTOR' | 'PATIENT') => Promise<{ success: boolean; message: string; isNewUser?: boolean; needsOnboarding?: boolean }>;
   logout: () => Promise<void>;
+  mutateUser: (updates: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       needsOnboarding: backendUser.needsOnboarding as boolean | undefined,
       onboardingComplete: backendUser.onboardingComplete as boolean | undefined,
       gender: backendUser.gender as string | undefined,
-      age: backendUser.age as number | undefined,
+      dateOfBirth: backendUser.date_of_birth as string | undefined,
     };
     storeTokens(data.accessToken, data.refreshToken, mappedUser);
     setUser(mappedUser);
@@ -149,8 +150,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const mutateUser = useCallback((updates: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, ...updates };
+      localStorage.setItem('curo.user', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, sendOtp, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, sendOtp, verifyOtp, logout, mutateUser }}>
       {children}
     </AuthContext.Provider>
   );

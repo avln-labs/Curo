@@ -90,7 +90,7 @@ function VerificationBanner({ status, rejectionReason }: { status: string; rejec
 }
 
 export function DoctorOnboardingPage() {
-  const { user } = useAuth();
+  const { user, mutateUser } = useAuth();
   const [step, setStep] = useState<Step>(1);
   const [maxDone, setMaxDone] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -132,6 +132,10 @@ export function DoctorOnboardingPage() {
   const [bufferMins, setBufferMins] = useState('5');
   const [maxPatients, setMaxPatients] = useState('25');
 
+  // ── Step 4 fields ────────────────────────────────────────────────────────────
+  const [upiId, setUpiId] = useState('');
+  const [upiQrUrl, setUpiQrUrl] = useState('');
+
   // ── Load existing profile on mount ───────────────────────────────────────────
   useEffect(() => {
     async function loadProfile() {
@@ -155,6 +159,8 @@ export function DoctorOnboardingPage() {
       if (d.languages?.length) setLanguages((d.languages as string[]).join(', '));
       if (d.email) setEmail(d.email);
       if (d.slug) setBookingUrl(`curo.app/${d.slug}`);
+      if (d.upi_id) setUpiId(d.upi_id);
+      if (d.upi_qr_url) setUpiQrUrl(d.upi_qr_url);
 
       // Restore consultation type fees
       const consultationTypes = d.consultationTypes as any[] | undefined;
@@ -195,29 +201,15 @@ export function DoctorOnboardingPage() {
   // ── Submit Step 1 ─────────────────────────────────────────────────────────────
   async function handleSaveProfile() {
     setError('');
-    const langs = toArray(languages);
-    const quals = toArray(qualifications);
     const specs = toArray(specialisations);
 
     if (!fullName.trim()) return setError('Full name is required.');
-    if (quals.length === 0) return setError('At least one qualification is required (e.g. "MBBS, MD").');
     if (specs.length === 0) return setError('At least one specialisation is required.');
-    if (!regNumber.trim()) return setError('Registration number is required.');
-    if (!council.trim()) return setError('Registration council is required.');
-    if (!city.trim()) return setError('City is required.');
-    if (langs.length === 0) return setError('At least one language is required.');
 
     setSaving(true);
     const { data, error: err } = await doctorApi.saveProfile({
       fullName: fullName.trim(),
-      qualifications: quals,
       specialisations: specs,
-      registrationNumber: regNumber.trim(),
-      registrationCouncil: council.trim(),
-      clinicName: clinicName.trim() || undefined,
-      city: city.trim(),
-      bio: bio.trim() || undefined,
-      languages: langs,
       email: email.trim() || undefined,
     });
     setSaving(false);
@@ -227,6 +219,7 @@ export function DoctorOnboardingPage() {
     }
 
     if (data.bookingUrl) setBookingUrl(data.bookingUrl);
+    mutateUser({ name: fullName.trim() });
     setVerificationStatus('pending');
     setMaxDone((prev) => Math.max(prev, 1));
     setStep(2);
@@ -285,8 +278,17 @@ export function DoctorOnboardingPage() {
     setStep(4);
   }
 
-  // ── Submit Step 4 (Payment info only, Razorpay Phase 3) ──────────────────────
+  // ── Submit Step 4 (Payment Setup) ───────────────────────────────────────────
   async function handleComplete() {
+    setSaving(true);
+    setError('');
+    const { data, error: err } = await doctorApi.completeOnboarding({ upiId, upiQrUrl });
+    setSaving(false);
+    
+    if (err || !data?.success) {
+      return setError(err || data?.message || 'Failed to complete onboarding. Please try again.');
+    }
+    
     setSubmitted(true);
   }
 
@@ -389,49 +391,17 @@ export function DoctorOnboardingPage() {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Full name <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="As per medical registration" />
+              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Dr. Suresh Kumar" />
             </div>
             <div className="form-group">
               <label className="form-label">Email (optional)</label>
               <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For notifications" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Qualifications <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={qualifications} onChange={(e) => setQualifications(e.target.value)} placeholder="MBBS, MD (comma-separated)" />
-              <div className="form-hint">Separate multiple qualifications with commas</div>
-            </div>
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">Specialisations <span style={{ color: 'var(--error)' }}>*</span></label>
               <input className="input" value={specialisations} onChange={(e) => setSpecialisations(e.target.value)} placeholder="General Medicine, Diabetology" />
               <div className="form-hint">Separate multiple specialisations with commas</div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Registration number <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={regNumber} onChange={(e) => setRegNumber(e.target.value)} placeholder="MCI/State registration number" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Registration council <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={council} onChange={(e) => setCouncil(e.target.value)} placeholder="e.g. Maharashtra Medical Council" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Clinic name <span className="text-muted">(optional)</span></label>
-              <input className="input" value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Your clinic or hospital name" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">City <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Pune" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Languages spoken <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={languages} onChange={(e) => setLanguages(e.target.value)} placeholder="Hindi, English, Marathi" />
-              <div className="form-hint">Separate with commas</div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Bio <span className="text-muted">(max 500 chars)</span></label>
-            <textarea className="textarea" value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={500} placeholder="Brief introduction for your booking page" />
-            <div className="form-hint">{bio.length}/500</div>
           </div>
 
           {fullName && (
@@ -444,7 +414,7 @@ export function DoctorOnboardingPage() {
             <button
               className={`btn btn-primary ${saving ? 'loading' : ''}`}
               onClick={handleSaveProfile}
-              disabled={saving || !fullName.trim() || !regNumber.trim() || !council.trim()}
+              disabled={saving || !fullName.trim() || !specialisations.trim()}
             >
               {saving ? '' : 'Save & Next →'}
             </button>
@@ -534,19 +504,6 @@ export function DoctorOnboardingPage() {
             ))}
           </div>
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Buffer between appointments (mins)</label>
-              <select className="select input" value={bufferMins} onChange={(e) => setBufferMins(e.target.value)}>
-                {[0, 5, 10, 15, 20, 30].map((v) => <option key={v} value={v}>{v} min</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Max patients per day</label>
-              <input className="input" type="number" min={1} max={100} value={maxPatients} onChange={(e) => setMaxPatients(e.target.value)} />
-            </div>
-          </div>
-
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <button className="btn btn-ghost" onClick={() => setStep(2)}>← Back</button>
             <button
@@ -560,7 +517,7 @@ export function DoctorOnboardingPage() {
         </div>
       )}
 
-      {/* ── Step 4: Payment Setup (info — Razorpay in Phase 3) ───────────── */}
+      {/* ── Step 4: Payment Setup (UPI MVP) ───────────── */}
       {step === 4 && (
         <div className="card">
           <div className="card-header">
@@ -568,19 +525,45 @@ export function DoctorOnboardingPage() {
             <span className="text-xs text-muted">Step 4 of 4</span>
           </div>
 
-          <div className="notice notice-info" style={{ marginBottom: 20 }}>
-            Razorpay payouts are coming in Phase 3. For now, submitting this step will mark your onboarding as complete and queue your profile for admin verification.
+          <div style={{ padding: '0 24px 24px' }}>
+            <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
+              Patients will use these UPI details to pay for their consultation during booking. You can also update this later from your Dashboard.
+            </p>
+            
+            <div className="form-group">
+              <label className="form-label">UPI ID / VPA</label>
+              <input type="text" className="input" placeholder="e.g. yourname@okicici" value={upiId} onChange={e => setUpiId(e.target.value)} />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">UPI QR Code Image</label>
+              <input type="file" accept="image/*" className="input" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  if (file.size > 2 * 1024 * 1024) {
+                    alert('File size must be less than 2MB');
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onloadend = () => setUpiQrUrl(reader.result as string);
+                  reader.readAsDataURL(file);
+                }
+              }} />
+              <div className="form-hint">Upload your QR code image (max 2MB). It will be shown to patients during payment.</div>
+            </div>
+            
+            {upiQrUrl && (
+              <div style={{ marginTop: 16, border: '1px solid var(--border)', padding: 16, borderRadius: 8, display: 'inline-block' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>QR Preview:</div>
+                <img src={upiQrUrl} alt="UPI QR Code" style={{ width: 120, height: 120, objectFit: 'contain' }} />
+              </div>
+            )}
           </div>
 
-          <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🏦</div>
-            Bank account linking via Razorpay will be available shortly.
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 24px 24px' }}>
             <button className="btn btn-ghost" onClick={() => setStep(3)}>← Back</button>
-            <button className="btn btn-primary btn-lg" onClick={handleComplete}>
-              Submit for Verification ✓
+            <button className={`btn btn-primary btn-lg ${saving ? 'loading' : ''}`} disabled={saving} onClick={handleComplete}>
+              Complete Setup ✓
             </button>
           </div>
         </div>

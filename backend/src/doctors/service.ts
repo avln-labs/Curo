@@ -162,47 +162,20 @@ export const DoctorService = {
       slug = await ensureUniqueSlug(base, doctorId);
     }
 
-    // Verify registration number format (+ queue for manual review)
-    const verificationResult = await verifyDoctorRegistration(
-      data.registrationNumber,
-      data.registrationCouncil
-    );
-
-    if (!verificationResult.isValid) {
-      return {
-        success: false,
-        message: 'Registration number format is invalid. Please check and try again.',
-      };
-    }
-
     // Update doctor profile
     await db.query(
       `UPDATE doctors SET
-         slug = $1,
-         full_name = $2,
-         qualifications = $3,
-         specialisations = $4,
-         registration_number = $5,
-         registration_council = $6,
-         clinic_name = $7,
-         city = $8,
-         bio = $9,
-         languages = $10,
-         verification_status = 'pending',
-         onboarding_step = GREATEST(onboarding_step, 1),
-         updated_at = NOW()
-       WHERE id = $11`,
+        slug = $1,
+        full_name = $2,
+        specialisations = $3,
+        onboarding_step = GREATEST(onboarding_step, 1),
+        verification_status = 'verified',
+        updated_at = NOW()
+       WHERE id = $4`,
       [
         slug,
         data.fullName,
-        data.qualifications,
         data.specialisations,
-        data.registrationNumber,
-        data.registrationCouncil,
-        data.clinicName ?? null,
-        data.city,
-        data.bio ?? null,
-        data.languages,
         doctorId,
       ]
     );
@@ -218,8 +191,8 @@ export const DoctorService = {
     // Log verification history
     await db.query(
       `INSERT INTO doctor_verification_history (doctor_id, action, note)
-       VALUES ($1, 'submitted', $2)`,
-      [doctorId, verificationResult.requiresManualReview ? 'Queued for manual admin review' : 'Auto-verified']
+       VALUES ($1, 'approved', 'Auto-verified for MVP')`,
+      [doctorId]
     );
 
     const updatedDoctor = await db.queryOne<DoctorRow>(
@@ -322,20 +295,31 @@ export const DoctorService = {
     return { success: true, message: 'Schedule saved.' };
   },
 
-  /**
-   * Mark onboarding as complete (Step 4 — payment setup done externally via Razorpay)
-   * Called after Razorpay linked account onboarding webhook.
-   */
+  /** Mark onboarding as complete — enables booking link for MVP (no admin gate) */
   async markOnboardingComplete(doctorId: string) {
     await db.query(
       `UPDATE doctors SET
          onboarding_step = 4,
-         booking_link_active = (verification_status = 'verified'),
+         booking_link_active = true,
          updated_at = NOW()
        WHERE id = $1`,
       [doctorId]
     );
     return { success: true, message: 'Onboarding complete.' };
+  },
+
+  /** Save UPI payment info (upi_id + upi_qr_url) */
+  async updateUpiInfo(doctorId: string, data: { upiId?: string; upiQrUrl?: string }) {
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+    if (data.upiId !== undefined)    { updates.push(`upi_id = $${idx++}`);     params.push(data.upiId); }
+    if (data.upiQrUrl !== undefined) { updates.push(`upi_qr_url = $${idx++}`); params.push(data.upiQrUrl); }
+    if (updates.length === 0) return { success: false, message: 'Nothing to update.' };
+    updates.push(`updated_at = NOW()`);
+    params.push(doctorId);
+    await db.query(`UPDATE doctors SET ${updates.join(', ')} WHERE id = $${idx}`, params);
+    return { success: true, message: 'UPI info saved.' };
   },
 
   /** Update doctor profile fields post-onboarding */
@@ -402,7 +386,7 @@ export const DoctorService = {
     const { rows: appointments } = await db.query(
       `SELECT
          a.id, a.slot_time, a.status, a.chief_complaint, a.consultation_started_at,
-         p.full_name as patient_name, p.age, p.gender,
+         p.full_name as patient_name, p.date_of_birth, p.gender,
          ct.type as consultation_type, ct.fee
        FROM appointments a
        JOIN patients p ON p.id = a.patient_id
@@ -509,4 +493,98 @@ export const DoctorService = {
     );
     return { success: true, message: `${dates.length} date(s) unblocked.` };
   },
+
+  /**
+   * Generate available slots for a doctor on a given date.
+   * Reads doctor_schedules, excludes booked slots and blocked dates.
+   * @param slug  doctor slug
+   * @param date  YYYY-MM-DD
+   */
+  async getAvailableSlots(slug: string, date: string) {
+    // Resolve doctor
+    const doctor = await db.queryOne<{ id: string; slug: string; full_name: string }>(  
+      `SELECT id, slug, full_name FROM doctors WHERE slug = $1 AND is_active = true`,
+      [slug]
+    );
+    if (!doctor) return null;
+
+    // Check if date is blocked
+    const blocked = await db.queryOne(
+      `SELECT id FROM doctor_blocked_dates WHERE doctor_id = $1 AND blocked_date = $2::date`,
+      [doctor.id, date]
+    );
+    if (blocked) return { slots: [], blocked: true };
+
+    // Get day of week (0=Sun)
+    const dateObj = new Date(date + 'T00:00:00');
+    const dayOfWeek = dateObj.getDay();
+
+    // Get schedule for that day
+    const schedule = await db.queryOne<{
+      start_time: string;
+      end_time: string;
+      is_active: boolean;
+    }>(
+      `SELECT start_time, end_time, is_active FROM doctor_schedules
+       WHERE doctor_id = $1 AND day_of_week = $2`,
+      [doctor.id, dayOfWeek]
+    );
+
+    if (!schedule || !schedule.is_active) return { slots: [], blocked: false };
+
+    // Get consultation type duration (use shortest active type as slot size)
+    const ctRow = await db.queryOne<{ duration_minutes: number; fee: string }>(  
+      `SELECT duration_minutes, fee FROM consultation_types
+       WHERE doctor_id = $1 AND is_active = true ORDER BY duration_minutes ASC LIMIT 1`,
+      [doctor.id]
+    );
+    const slotDuration = ctRow?.duration_minutes ?? 15;
+
+    // Get breaks
+    const { rows: breaks } = await db.query<{ start_time: string; end_time: string }>(
+      `SELECT dsb.start_time, dsb.end_time
+       FROM doctor_schedule_breaks dsb
+       JOIN doctor_schedules ds ON ds.id = dsb.schedule_id
+       WHERE ds.doctor_id = $1 AND ds.day_of_week = $2`,
+      [doctor.id, dayOfWeek]
+    );
+
+    // Get already-booked slots for this date (non-cancelled)
+    const { rows: booked } = await db.query<{ slot_time: string }>(
+      `SELECT slot_time FROM appointments
+       WHERE doctor_id = $1 AND slot_date = $2::date
+         AND status NOT IN ('cancelled','no_show')
+         AND (slot_held_until IS NULL OR slot_held_until > NOW())`,
+      [doctor.id, date]
+    );
+    const bookedTimes = new Set(booked.map(r => r.slot_time.slice(0, 5)));
+
+    // Generate slots
+    function timeToMinutes(t: string): number {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    }
+    function minutesToTime(m: number): string {
+      return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    }
+
+    const startMin = timeToMinutes(schedule.start_time);
+    const endMin = timeToMinutes(schedule.end_time);
+    const breakRanges = breaks.map(b => ({
+      start: timeToMinutes(b.start_time),
+      end: timeToMinutes(b.end_time),
+    }));
+
+    const slots: { time: string; available: boolean }[] = [];
+    for (let t = startMin; t + slotDuration <= endMin; t += slotDuration) {
+      const timeStr = minutesToTime(t);
+      // Check if slot falls in a break
+      const inBreak = breakRanges.some(br => t >= br.start && t < br.end);
+      const isBooked = bookedTimes.has(timeStr);
+      slots.push({ time: timeStr, available: !inBreak && !isBooked });
+    }
+
+    return { slots, blocked: false, slotDuration };
+  },
 };
+

@@ -68,8 +68,13 @@ doctorRouter.post(
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor profile not found.' } });
     }
 
-    const result = await DoctorService.saveOnboardingProfile(doctorId, req.user!.userId, parsed.data);
-    return res.status(result.success ? 200 : 400).json(result);
+    try {
+      const result = await DoctorService.saveOnboardingProfile(doctorId, req.user!.userId, parsed.data);
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (err: any) {
+      console.error('[ONBOARDING_PROFILE_ERROR]', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to save profile. Database error.' });
+    }
   }
 );
 
@@ -110,6 +115,32 @@ doctorRouter.post(
 
     const result = await DoctorService.saveOnboardingSchedule(doctorId, parsed.data);
     return res.status(result.success ? 200 : 400).json(result);
+  }
+);
+
+// ─── Onboarding: Step 4 — Complete & Payment Setup ─────────────────────────────
+
+doctorRouter.post(
+  '/onboarding/complete',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const { upiId, upiQrUrl } = req.body as { upiId?: string; upiQrUrl?: string };
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor profile not found.' } });
+    }
+
+    try {
+      if (upiId || upiQrUrl) {
+        await DoctorService.updateUpiInfo(doctorId, { upiId, upiQrUrl });
+      }
+      const result = await DoctorService.markOnboardingComplete(doctorId);
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (err: any) {
+      console.error('[ONBOARDING_COMPLETE_ERROR]', err);
+      return res.status(500).json({ success: false, message: 'Failed to complete onboarding. Database error.' });
+    }
   }
 );
 
@@ -236,3 +267,40 @@ doctorRouter.get('/:slug/public', async (req, res) => {
   }
   return res.json({ success: true, data: profile });
 });
+
+// ─── GET /doctors/:slug/slots — available slots for a date (no auth) ──────────
+
+doctorRouter.get('/:slug/slots', async (req, res) => {
+  const { date } = req.query as { date?: string };
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'date query param is required (YYYY-MM-DD)' },
+    });
+  }
+  const result = await DoctorService.getAvailableSlots(req.params.slug, date);
+  if (!result) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Doctor not found.' },
+    });
+  }
+  return res.json({ success: true, data: result });
+});
+
+// ─── PUT /doctors/upi — update UPI payment info ───────────────────────────────
+
+doctorRouter.put(
+  '/upi',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const { upiId, upiQrUrl } = req.body as { upiId?: string; upiQrUrl?: string };
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor profile not found.' } });
+    }
+    const result = await DoctorService.updateUpiInfo(doctorId, { upiId, upiQrUrl });
+    return res.status(result.success ? 200 : 400).json(result);
+  }
+);

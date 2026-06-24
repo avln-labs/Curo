@@ -27,7 +27,7 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 interface PatientProfile {
   full_name: string;
   gender: string | null;
-  age: number | null;
+  date_of_birth: string | null;
   blood_group: string | null;
   allergies: string[];
   mobile: string;
@@ -61,7 +61,7 @@ export function PatientProfilePage() {
   const [bloodGroup, setBloodGroup] = useState('');
   const [allergyInput, setAllergyInput] = useState('');
   const [allergies, setAllergies]   = useState<string[]>([]);
-  const [age, setAge]               = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender]         = useState('');
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function PatientProfilePage() {
       setEmail(p.email || '');
       setBloodGroup(p.blood_group || '');
       setAllergies(p.allergies || []);
-      setAge(p.age !== null ? String(p.age) : '');
+      setDateOfBirth(p.date_of_birth || '');
       setGender(p.gender || '');
       setLoading(false);
     }
@@ -97,7 +97,7 @@ export function PatientProfilePage() {
     if (JSON.stringify(allergies) !== JSON.stringify(profile.allergies)) body.allergies = allergies;
 
     // Only include age/gender if not locked
-    if (!profile.age_locked && age && String(profile.age) !== age) body.age = parseInt(age, 10);
+    if (!profile.age_locked && dateOfBirth && profile.date_of_birth !== dateOfBirth) body.dateOfBirth = dateOfBirth;
     if (!profile.gender_locked && gender && gender !== profile.gender) body.gender = gender;
 
     if (Object.keys(body).length === 0) {
@@ -242,7 +242,7 @@ export function PatientProfilePage() {
 
           <div className="form-group">
             <label className="form-label">
-              Age
+              Date of Birth
               {profile.age_locked && (
                 <span style={{ marginLeft: 6, fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>
                   · locked after setup
@@ -250,14 +250,12 @@ export function PatientProfilePage() {
               )}
             </label>
             <input
-              id="profile-age"
               className="input"
-              type="number"
-              min={1}
-              max={120}
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
               readOnly={profile.age_locked}
+              max={new Date().toISOString().split('T')[0]}
               style={profile.age_locked ? { background: 'var(--surface-raised)', color: 'var(--text-secondary)', cursor: 'not-allowed' } : undefined}
             />
           </div>
