@@ -18,6 +18,11 @@ export const env = {
   NODE_ENV: getEnv('NODE_ENV', 'development'),
   FRONTEND_URL: getEnv('FRONTEND_URL', 'http://localhost:5173'),
 
+  // Google OAuth
+  GOOGLE_CLIENT_ID: getEnv('GOOGLE_CLIENT_ID', 'curo-google-client-id.apps.googleusercontent.com'),
+  GOOGLE_CLIENT_SECRET: getEnv('GOOGLE_CLIENT_SECRET', 'curo-google-client-secret'),
+  GOOGLE_REDIRECT_URI: getEnv('GOOGLE_REDIRECT_URI', 'http://localhost:4000/api/v1/doctors/google/callback'),
+
   // OTP Provider: 'console' | 'twilio'
   OTP_PROVIDER: getEnv('OTP_PROVIDER', 'console') as 'console' | 'twilio',
 

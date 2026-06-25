@@ -172,6 +172,8 @@ export const bookingsApi = {
   confirmPayment: (id: string, body: { utrNumber?: string }) => api.post<{ success: boolean; message: string }>(`/bookings/${id}/confirm`, body),
   getMy: () => api.get<{ success: boolean; data: Record<string, unknown>[] }>('/bookings/my'),
   getById: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/bookings/${id}`),
+  cancel: (id: string) => api.put<{ success: boolean; message: string }>(`/bookings/${id}/cancel`, {}),
+  reschedule: (id: string, body: { slotDate: string; slotTime: string }) => api.put<{ success: boolean; message: string }>(`/bookings/${id}/reschedule`, body),
 };
 
 // ── Consultations API ─────────────────────────────────────────────────────────

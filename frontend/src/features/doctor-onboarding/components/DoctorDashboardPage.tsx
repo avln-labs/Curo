@@ -16,6 +16,7 @@ interface DashboardStats {
 
 interface Appointment {
   id: string;
+  slot_date: string;
   slot_time: string;
   status: string;
   chief_complaint: string;
@@ -24,6 +25,7 @@ interface Appointment {
   gender: string | null;
   consultation_type: string;
   fee: string;
+  meet_link?: string | null;
 }
 
 interface DashboardData {
@@ -82,6 +84,14 @@ function calculateAge(dob: string | null) {
   return Math.abs(new Date(diff).getUTCFullYear() - 1970);
 }
 
+function canJoinConsultation(slotDate: string, slotTime: string) {
+  if (!slotDate || !slotTime) return false;
+  const startTimeStr = `${slotDate}T${slotTime.slice(0,5)}:00`;
+  const startTime = new Date(startTimeStr).getTime();
+  const now = Date.now();
+  return now >= (startTime - 10 * 60 * 1000);
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DoctorDashboardPage() {
@@ -91,8 +101,8 @@ export function DoctorDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Tabs: 'dashboard' | 'upi'
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'upi'>('dashboard');
+  // Tabs: 'dashboard' | 'upi' | 'google'
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'upi' | 'google'>('dashboard');
   const [appointmentsTab, setAppointmentsTab] = useState<'upcoming' | 'live' | 'completed'>('upcoming');
 
   // UPI Settings
@@ -100,6 +110,10 @@ export function DoctorDashboardPage() {
   const [upiQrUrl, setUpiQrUrl] = useState('');
   const [savingUpi, setSavingUpi] = useState(false);
   const [upiSuccess, setUpiSuccess] = useState('');
+
+  // Google Settings
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -117,6 +131,12 @@ export function DoctorDashboardPage() {
         setUpiId(profRes.data.upi_id || '');
         setUpiQrUrl(profRes.data.upi_qr_url || '');
       }
+
+      // Load Google status
+      const { data: gRes } = await api.get<{ success: boolean; connected: boolean }>('/doctors/google/status');
+      if (gRes?.success) {
+        setGoogleConnected(gRes.connected);
+      }
       
       setLoading(false);
     }
@@ -132,6 +152,29 @@ export function DoctorDashboardPage() {
       setUpiSuccess('UPI Details updated successfully.');
     } else {
       setError(err || 'Failed to update UPI details.');
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    setGoogleLoading(true);
+    const { data: res, error: err } = await api.get<{ success: boolean; url: string }>('/doctors/google/auth');
+    setGoogleLoading(false);
+    if (res?.success && res.url) {
+      window.location.href = res.url;
+    } else {
+      setError(err || 'Failed to initiate Google OAuth flow.');
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    setGoogleLoading(true);
+    const { data: res, error: err } = await api.delete<{ success: boolean }>('/doctors/google/disconnect');
+    setGoogleLoading(false);
+    if (res?.success) {
+      setGoogleConnected(false);
+      alert('Google Calendar disconnected successfully.');
+    } else {
+      setError(err || 'Failed to disconnect Google Calendar.');
     }
   };
 
@@ -197,6 +240,12 @@ export function DoctorDashboardPage() {
         >
           UPI Settings
         </button>
+        <button 
+          className={`btn ${activeTab === 'google' ? 'btn-primary' : 'btn-ghost'}`} 
+          onClick={() => setActiveTab('google')}
+        >
+          Google Calendar
+        </button>
       </div>
 
       {activeTab === 'dashboard' && (
@@ -251,6 +300,9 @@ export function DoctorDashboardPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                       <span className="appt-time" style={{ fontWeight: 600 }}>{formatTime(a.slot_time)}</span>
                       <span className={`badge ${statusClass(a.status)}`}>{statusLabel(a.status)}</span>
+                      {a.meet_link && canJoinConsultation(a.slot_date, a.slot_time) && (
+                        <a href={a.meet_link} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">Join Consultation</a>
+                      )}
                       {a.status !== 'completed' && (
                         <button className="btn btn-primary btn-sm" onClick={() => navigate('/consultations')}>Open Workspace</button>
                       )}
@@ -301,6 +353,37 @@ export function DoctorDashboardPage() {
             )}
             <div style={{ marginTop: 24 }}>
               <button className={`btn btn-primary ${savingUpi ? 'loading' : ''}`} onClick={handleSaveUpi} disabled={savingUpi}>Save UPI Details</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'google' && (
+        <div className="card" style={{ maxWidth: 600 }}>
+          <div className="card-header">
+            <h2 className="card-title">Google Calendar Integration</h2>
+            <p className="text-muted text-sm">Connect your Google account to automatically create calendar events and generate Google Meet links for online consultations.</p>
+          </div>
+          <div style={{ padding: 24 }}>
+            {new URLSearchParams(window.location.search).get('google') === 'success' && (
+              <div style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: 12, borderRadius: 8, marginBottom: 16 }}>Google Calendar connected successfully!</div>
+            )}
+            {new URLSearchParams(window.location.search).get('google') === 'failed' && (
+              <div style={{ background: 'var(--error-bg)', color: 'var(--error)', padding: 12, borderRadius: 8, marginBottom: 16 }}>Failed to connect Google Calendar. Please try again.</div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-raised)' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 4 }}>Google Account</div>
+                <div style={{ fontSize: '0.85rem', color: googleConnected ? 'var(--success)' : 'var(--text-secondary)' }}>
+                  {googleConnected ? '✓ Connected to Google Calendar' : 'Not connected'}
+                </div>
+              </div>
+              {googleConnected ? (
+                <button className={`btn btn-secondary btn-sm ${googleLoading ? 'loading' : ''}`} onClick={handleDisconnectGoogle} disabled={googleLoading}>Disconnect</button>
+              ) : (
+                <button className={`btn btn-primary btn-sm ${googleLoading ? 'loading' : ''}`} onClick={handleConnectGoogle} disabled={googleLoading}>Connect Google Account</button>
+              )}
             </div>
           </div>
         </div>

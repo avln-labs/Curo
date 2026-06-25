@@ -11,6 +11,7 @@ import { AdminPanel } from './features/admin';
 import { HealthThreadPage } from './features/health_threads';
 import { HomePage } from './features/home';
 import { PatientOnboardingPage, PatientProfilePage } from './features/patient-profile';
+import { DoctorProfilePage } from './features/doctor-profile';
 import { AppShell } from './shared/components/AppShell';
 import { RequireAuth, useAuth } from './features/auth/AuthContext';
 
@@ -25,6 +26,12 @@ function RequireDoctor({ children }: { children: React.ReactNode }) {
   if (isLoading) return null;
   if (!isAuthenticated || !user) return <Navigate to="/" replace state={{ from: location }} />;
   if (user.role !== 'DOCTOR') return <Navigate to="/records" replace />;
+  
+  // If doctor hasn't finished onboarding and they aren't already on the onboarding page
+  if (user.needsOnboarding && location.pathname !== '/doctor-onboarding') {
+    return <Navigate to="/doctor-onboarding" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -71,7 +78,7 @@ function App() {
         {/* ── Doctor-only routes ───────────────────────────────────── */}
         <Route path="/dashboard"          element={<RequireDoctor><DoctorDashboardPage /></RequireDoctor>} />
         <Route path="/doctor-onboarding"  element={<RequireDoctor><DoctorOnboardingPage /></RequireDoctor>} />
-        <Route path="/doctor-schedule"    element={<RequireDoctor><DoctorSchedulePage /></RequireDoctor>} />
+        <Route path="/doctor-profile"     element={<RequireDoctor><DoctorProfilePage /></RequireDoctor>} />
         <Route path="/consultations"      element={<RequireDoctor><ConsultationDashboard /></RequireDoctor>} />
         <Route path="/health-threads"     element={<RequireDoctor><HealthThreadPage /></RequireDoctor>} />
         <Route path="/patient-thread/:id" element={<RequireDoctor><PatientThreadPage /></RequireDoctor>} />

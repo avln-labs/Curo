@@ -61,7 +61,7 @@ export const PatientService = {
     const { rows: appointments } = await db.query(
       `SELECT
          a.id, a.slot_date, a.slot_time, a.status, a.chief_complaint,
-         a.consultation_started_at, a.consultation_ended_at,
+         a.consultation_started_at, a.consultation_ended_at, a.meet_link,
          d.full_name as doctor_name, d.slug as doctor_slug,
          ct.type as consultation_type, ct.fee
        FROM appointments a

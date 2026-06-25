@@ -304,3 +304,92 @@ doctorRouter.put(
     return res.status(result.success ? 200 : 400).json(result);
   }
 );
+
+// ─── Google Calendar OAuth Routes ─────────────────────────────────────────────
+
+doctorRouter.get(
+  '/google/auth',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor profile not found.' } });
+    }
+    const { GoogleCalendarService } = await import('./google');
+    const url = GoogleCalendarService.getAuthUrl(doctorId);
+    return res.json({ success: true, url });
+  }
+);
+
+doctorRouter.get(
+  '/google/callback',
+  async (req, res) => {
+    const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
+    const { env } = await import('../shared/env');
+    if (error || !code || !state) {
+      return res.redirect(`${env.FRONTEND_URL}/dashboard?google=failed`);
+    }
+
+    try {
+      const { GoogleCalendarService } = await import('./google');
+      const tokens = await GoogleCalendarService.exchangeCodeForTokens(code);
+      if (tokens.refreshToken) {
+        const { db } = await import('../shared/database');
+        await db.query(
+          'UPDATE doctors SET google_refresh_token = $1, updated_at = NOW() WHERE id = $2',
+          [tokens.refreshToken, state]
+        );
+      }
+      return res.redirect(`${env.FRONTEND_URL}/dashboard?google=success`);
+    } catch (err) {
+      console.error('[GOOGLE_OAUTH_CALLBACK_ERROR]', err);
+      return res.redirect(`${env.FRONTEND_URL}/dashboard?google=failed`);
+    }
+  }
+);
+
+doctorRouter.delete(
+  '/google/disconnect',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor profile not found.' } });
+    }
+    const { db } = await import('../shared/database');
+    const doc = await db.queryOne<{ google_refresh_token: string | null }>(
+      'SELECT google_refresh_token FROM doctors WHERE id = $1',
+      [doctorId]
+    );
+    if (doc?.google_refresh_token) {
+      const { GoogleCalendarService } = await import('./google');
+      await GoogleCalendarService.revokeToken(doc.google_refresh_token);
+    }
+    await db.query(
+      'UPDATE doctors SET google_refresh_token = NULL, updated_at = NOW() WHERE id = $1',
+      [doctorId]
+    );
+    return res.json({ success: true, message: 'Google Calendar disconnected.' });
+  }
+);
+
+doctorRouter.get(
+  '/google/status',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor profile not found.' } });
+    }
+    const { db } = await import('../shared/database');
+    const doc = await db.queryOne<{ google_refresh_token: string | null }>(
+      'SELECT google_refresh_token FROM doctors WHERE id = $1',
+      [doctorId]
+    );
+    return res.json({ success: true, connected: !!doc?.google_refresh_token });
+  }
+);
+

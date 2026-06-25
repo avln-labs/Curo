@@ -73,8 +73,11 @@ interface SettingsRow {
 // ─── Slug helpers ─────────────────────────────────────────────────────────────
 
 function nameToSlugBase(name: string): string {
-  return 'dr-' + name
-    .toLowerCase()
+  let cleanedName = name.toLowerCase().trim();
+  // Strip "dr", "dr.", "doctor" prefixes
+  cleanedName = cleanedName.replace(/^(dr\.?|doctor)\s+/i, '');
+  
+  return cleanedName
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
@@ -385,7 +388,7 @@ export const DoctorService = {
     // Today's appointments with patient info
     const { rows: appointments } = await db.query(
       `SELECT
-         a.id, a.slot_time, a.status, a.chief_complaint, a.consultation_started_at,
+         a.id, a.slot_date, a.slot_time, a.status, a.chief_complaint, a.consultation_started_at, a.meet_link,
          p.full_name as patient_name, p.date_of_birth, p.gender,
          ct.type as consultation_type, ct.fee
        FROM appointments a

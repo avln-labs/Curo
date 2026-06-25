@@ -139,9 +139,55 @@ export const BookingsService = {
       );
     }
 
-    await db.query(
-      `UPDATE appointments SET status = 'confirmed', slot_held_until = NULL, updated_at = NOW() WHERE id = $1`,
+    // Check if consultation type is online and doctor has google_refresh_token
+    const apptData = await db.queryOne<{
+      doctor_id: string;
+      doctor_name: string;
+      patient_name: string;
+      slot_date: any;
+      slot_time: string;
+      chief_complaint: string;
+      consultation_type: string;
+      google_refresh_token: string | null;
+    }>(
+      `SELECT
+         a.doctor_id, a.slot_date, a.slot_time, a.chief_complaint,
+         d.full_name as doctor_name, d.google_refresh_token,
+         pat.full_name as patient_name,
+         ct.type as consultation_type
+       FROM appointments a
+       JOIN doctors d ON d.id = a.doctor_id
+       JOIN patients pat ON pat.id = a.patient_id
+       LEFT JOIN consultation_types ct ON ct.id = a.consultation_type_id
+       WHERE a.id = $1`,
       [appointmentId]
+    );
+
+    let meetLink: string | null = null;
+    let calendarEventId: string | null = null;
+
+    if (apptData && apptData.consultation_type === 'online' && apptData.google_refresh_token) {
+      try {
+        const { GoogleCalendarService } = await import('../doctors/google');
+        const meetRes = await GoogleCalendarService.createMeetEvent(apptData.google_refresh_token, {
+          id: appointmentId,
+          doctorName: apptData.doctor_name,
+          patientName: apptData.patient_name,
+          slotDate: typeof apptData.slot_date === 'object' ? apptData.slot_date.toISOString().split('T')[0] : apptData.slot_date,
+          slotTime: apptData.slot_time,
+          chiefComplaint: apptData.chief_complaint,
+        });
+        meetLink = meetRes.meetLink;
+        calendarEventId = meetRes.calendarEventId;
+      } catch (err: any) {
+        console.error('[CREATE_MEET_EVENT_ERROR]', err);
+        // Fail gracefully, allow appointment confirmation to succeed
+      }
+    }
+
+    await db.query(
+      `UPDATE appointments SET status = 'confirmed', slot_held_until = NULL, meet_link = COALESCE($2, meet_link), calendar_event_id = COALESCE($3, calendar_event_id), updated_at = NOW() WHERE id = $1`,
+      [appointmentId, meetLink, calendarEventId]
     );
 
     return { success: true, message: 'Appointment confirmed.' };
@@ -188,5 +234,106 @@ export const BookingsService = {
        WHERE a.id = $1`,
       [appointmentId]
     );
+  },
+
+  /** Cancel an appointment */
+  async cancelAppointment(appointmentId: string, userId: string, userRole: string) {
+    const appt = await db.queryOne<{
+      id: string;
+      patient_id: string;
+      doctor_id: string;
+      status: string;
+      calendar_event_id: string | null;
+      google_refresh_token: string | null;
+    }>(
+      `SELECT a.id, a.patient_id, a.doctor_id, a.status, a.calendar_event_id, d.google_refresh_token
+       FROM appointments a
+       JOIN doctors d ON d.id = a.doctor_id
+       WHERE a.id = $1`,
+      [appointmentId]
+    );
+
+    if (!appt) return { success: false, message: 'Appointment not found.' };
+
+    // Verify ownership
+    if (userRole === 'PATIENT') {
+      const p = await db.queryOne<{ id: string }>('SELECT id FROM patients WHERE user_id = $1', [userId]);
+      if (p?.id !== appt.patient_id) return { success: false, message: 'Not authorized.' };
+    } else if (userRole === 'DOCTOR') {
+      const d = await db.queryOne<{ id: string }>('SELECT id FROM doctors WHERE user_id = $1', [userId]);
+      if (d?.id !== appt.doctor_id) return { success: false, message: 'Not authorized.' };
+    } else {
+      return { success: false, message: 'Not authorized.' };
+    }
+
+    if (appt.status === 'cancelled') return { success: false, message: 'Already cancelled.' };
+    if (appt.status === 'completed') return { success: false, message: 'Cannot cancel a completed appointment.' };
+
+    await db.query(
+      `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+      [appointmentId]
+    );
+
+    if (appt.calendar_event_id && appt.google_refresh_token) {
+      try {
+        const { GoogleCalendarService } = await import('../doctors/google');
+        await GoogleCalendarService.deleteEvent(appt.google_refresh_token, appt.calendar_event_id);
+      } catch (err) {
+        console.error('[CANCEL_MEET_EVENT_ERROR]', err);
+      }
+    }
+
+    return { success: true, message: 'Appointment cancelled successfully.' };
+  },
+
+  /** Reschedule an appointment */
+  async rescheduleAppointment(appointmentId: string, patientId: string, newDate: string, newTime: string) {
+    const appt = await db.queryOne<{
+      id: string;
+      patient_id: string;
+      doctor_id: string;
+      status: string;
+      calendar_event_id: string | null;
+      google_refresh_token: string | null;
+    }>(
+      `SELECT a.id, a.patient_id, a.doctor_id, a.status, a.calendar_event_id, d.google_refresh_token
+       FROM appointments a
+       JOIN doctors d ON d.id = a.doctor_id
+       WHERE a.id = $1`,
+      [appointmentId]
+    );
+
+    if (!appt) return { success: false, message: 'Appointment not found.' };
+    if (appt.patient_id !== patientId) return { success: false, message: 'Not authorized.' };
+    if (appt.status !== 'confirmed') return { success: false, message: 'Can only reschedule confirmed appointments.' };
+
+    // Check slot is still free
+    const existing = await db.queryOne(
+      `SELECT id FROM appointments
+       WHERE doctor_id = $1 AND slot_date = $2::date AND slot_time = $3::time
+         AND status NOT IN ('cancelled', 'no_show')
+         AND (slot_held_until IS NULL OR slot_held_until > NOW())`,
+      [appt.doctor_id, newDate, newTime]
+    );
+    if (existing) return { success: false, message: 'The selected slot is already booked.' };
+
+    await db.query(
+      `UPDATE appointments SET slot_date = $1::date, slot_time = $2::time, updated_at = NOW() WHERE id = $3`,
+      [newDate, newTime, appointmentId]
+    );
+
+    if (appt.calendar_event_id && appt.google_refresh_token) {
+      try {
+        const { GoogleCalendarService } = await import('../doctors/google');
+        await GoogleCalendarService.updateEvent(appt.google_refresh_token, appt.calendar_event_id, {
+          slotDate: newDate,
+          slotTime: newTime,
+        });
+      } catch (err) {
+        console.error('[UPDATE_MEET_EVENT_ERROR]', err);
+      }
+    }
+
+    return { success: true, message: 'Appointment rescheduled successfully.' };
   },
 };

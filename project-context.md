@@ -44,7 +44,7 @@ To minimize dependencies and simplify the architecture for the MVP, CURO uses a 
 1. **Availability & Slots:** Doctors configure their weekly schedule, slot durations, and blocked dates in CURO. The backend dynamically calculates available slots in real-time, handling overlaps and breaks.
 2. **Booking Flow:** When a patient books through the Doctor's Public Link or by scanning the Doctor's QR Code, CURO creates a pending appointment.
 3. **Payments:** Patients make payments manually via UPI (by scanning the Doctor's uploaded UPI QR Code) and submit a UTR number.
-4. **Google Meet:** For online consultations, the doctor can provide a custom Google Meet link when starting the appointment.
+4. **Google Meet Integration:** For online consultations, doctors can connect their Google account. CURO automatically creates a Google Calendar event and generates a Google Meet link when a patient confirms booking/payment.
 
 ### Authentication Flow
 - **OTP Based:** Both Doctors and Patients use mobile OTP to sign in.

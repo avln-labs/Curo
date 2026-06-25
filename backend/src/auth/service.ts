@@ -56,8 +56,9 @@ interface PatientRow {
   user_id: string;
   full_name: string;
   onboarding_complete: boolean;
-  gender: string | null;
-  age: number | null;
+  gender?: string | null;
+  age?: number | null;
+  date_of_birth?: string | null;
 }
 
 interface RefreshTokenRow {
@@ -71,7 +72,7 @@ interface RefreshTokenRow {
 // Cleared on server restart — for dev/demo mode only.
 interface InMemUser { id: string; mobile: string; email: string | null; role: UserRole; is_active: boolean; }
 interface InMemDoctor { id: string; user_id: string; slug: string; full_name: string; verification_status: string; booking_link_active: boolean; onboarding_step: number; }
-interface InMemPatient { id: string; user_id: string; full_name: string; onboarding_complete: boolean; gender: string | null; age: number | null; }
+interface InMemPatient { id: string; user_id: string; full_name: string; onboarding_complete: boolean; gender: string | null; age: number | null; date_of_birth?: string | null; }
 interface InMemRefresh { userId: string; expiresAt: number; }
 
 const memUsers = new Map<string, InMemUser>();          // mobile → user
@@ -193,14 +194,14 @@ export const AuthService = {
           }
         } else if (role === 'PATIENT') {
           patientProfile = await db.queryOne<PatientRow>(
-            `SELECT id, user_id, full_name, onboarding_complete, gender, age FROM patients WHERE user_id = $1`,
+            `SELECT id, user_id, full_name, onboarding_complete, gender, age, date_of_birth FROM patients WHERE user_id = $1`,
             [user.id]
           );
           if (!patientProfile) {
             patientProfile = await db.queryOne<PatientRow>(
               `INSERT INTO patients (user_id, full_name, onboarding_complete)
                VALUES ($1, $2, false)
-               RETURNING id, user_id, full_name, onboarding_complete, gender, age`,
+               RETURNING id, user_id, full_name, onboarding_complete, gender, age, date_of_birth`,
               [user.id, '']
             );
           }
@@ -308,6 +309,7 @@ export const AuthService = {
       userPayload.needsOnboarding = !patientProfile.onboarding_complete;
       userPayload.gender = patientProfile.gender;
       userPayload.age = patientProfile.age;
+      userPayload.date_of_birth = patientProfile.date_of_birth;
     }
 
     return {
@@ -424,12 +426,17 @@ export const AuthService = {
         }
       } else if (user.role === 'PATIENT') {
         const pat = await db.queryOne<PatientRow>(
-          'SELECT id, full_name FROM patients WHERE user_id = $1',
+          'SELECT id, full_name, onboarding_complete, gender, age, date_of_birth FROM patients WHERE user_id = $1',
           [userId]
         );
         if (pat) {
           payload.patientId = pat.id;
           payload.fullName = pat.full_name;
+          payload.onboardingComplete = pat.onboarding_complete;
+          payload.needsOnboarding = !pat.onboarding_complete;
+          payload.gender = pat.gender;
+          payload.age = pat.age;
+          payload.date_of_birth = pat.date_of_birth;
         }
       }
 

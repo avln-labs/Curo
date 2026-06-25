@@ -102,7 +102,7 @@ export function DoctorOnboardingPage() {
   const [bookingUrl, setBookingUrl] = useState('');
 
   // ── Step 1 fields ────────────────────────────────────────────────────────────
-  const [fullName, setFullName] = useState('');
+  const [fullName, setFullName] = useState(user?.name || '');
   const [qualifications, setQualifications] = useState(''); // comma-separated
   const [specialisations, setSpecialisations] = useState(''); // comma-separated
   const [regNumber, setRegNumber] = useState('');
@@ -391,22 +391,34 @@ export function DoctorOnboardingPage() {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Full name <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Dr. Suresh Kumar" />
+              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Suresh Kumar" />
+              <div className="form-hint">Do not add "Dr." prefix; we add it automatically.</div>
             </div>
             <div className="form-group">
               <label className="form-label">Email (optional)</label>
               <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For notifications" />
             </div>
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Specialisations <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={specialisations} onChange={(e) => setSpecialisations(e.target.value)} placeholder="General Medicine, Diabetology" />
-              <div className="form-hint">Separate multiple specialisations with commas</div>
+              <label className="form-label">Specialisation <span style={{ color: 'var(--error)' }}>*</span></label>
+              <select className="input" value={specialisations} onChange={(e) => setSpecialisations(e.target.value)}>
+                <option value="">Select Specialisation</option>
+                <option value="General Physician">General Physician</option>
+                <option value="Cardiologist">Cardiologist</option>
+                <option value="Dermatologist">Dermatologist</option>
+                <option value="Pediatrician">Pediatrician</option>
+                <option value="Orthopedist">Orthopedist</option>
+                <option value="Gynecologist">Gynecologist</option>
+                <option value="Neurologist">Neurologist</option>
+                <option value="Psychiatrist">Psychiatrist</option>
+                <option value="Dentist">Dentist</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
           </div>
 
           {fullName && (
             <div className="notice notice-info" style={{ marginBottom: 16 }}>
-              Your booking link: <strong>curo.app/dr-{fullName.toLowerCase().replace(/^dr\.?\s*/i, '').trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}</strong>
+              Your booking link: <strong>curo.app/dr/{fullName.toLowerCase().replace(/^(dr\.?|doctor)\s+/i, '').trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}</strong>
             </div>
           )}
 

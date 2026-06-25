@@ -124,3 +124,57 @@ bookingRouter.get(
     return res.json({ success: true, data: appt });
   }
 );
+
+// ─── PUT /bookings/:id/cancel — cancel appointment ────────────────────────────
+
+bookingRouter.put(
+  '/:id/cancel',
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    try {
+      const result = await BookingsService.cancelAppointment(req.params.id, req.user!.userId, req.user!.role);
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (err: any) {
+      console.error('[CANCEL_BOOKING_ERROR]', err);
+      return res.status(500).json({ success: false, message: 'Failed to cancel appointment.' });
+    }
+  }
+);
+
+// ─── PUT /bookings/:id/reschedule — patient reschedules appointment ───────────
+
+const RescheduleSchema = z.object({
+  slotDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'slotDate must be YYYY-MM-DD'),
+  slotTime: z.string().regex(/^\d{2}:\d{2}$/, 'slotTime must be HH:MM'),
+});
+
+bookingRouter.put(
+  '/:id/reschedule',
+  requireAuth,
+  requireRole('PATIENT'),
+  async (req: AuthRequest, res) => {
+    const parsed = RescheduleSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+
+    const patientRow = await db.queryOne<{ id: string }>(
+      'SELECT id FROM patients WHERE user_id = $1',
+      [req.user!.userId]
+    );
+    if (!patientRow) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Patient profile not found.' } });
+    }
+
+    try {
+      const result = await BookingsService.rescheduleAppointment(
+        req.params.id,
+        patientRow.id,
+        parsed.data.slotDate,
+        parsed.data.slotTime
+      );
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (err: any) {
+      console.error('[RESCHEDULE_BOOKING_ERROR]', err);
+      return res.status(500).json({ success: false, message: 'Failed to reschedule appointment.' });
+    }
+  }
+);

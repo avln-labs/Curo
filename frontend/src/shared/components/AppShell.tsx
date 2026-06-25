@@ -4,10 +4,8 @@ import { useAuth } from '../../features/auth/AuthContext';
 const DOCTOR_NAV = [
   { label: 'Dashboard',      to: '/dashboard',         icon: '⊞' },
   { label: 'Consultations',  to: '/consultations',     icon: '♥' },
-  { label: 'Schedule',       to: '/doctor-schedule',   icon: '▷' },
   { label: 'Prescriptions',  to: '/prescriptions',     icon: '✦' },
-  { label: 'Records',        to: '/records',            icon: '◈' },
-  { label: 'Doctor Setup',   to: '/doctor-onboarding', icon: '✚' },
+  { label: 'Profile',        to: '/doctor-profile',    icon: '👤' },
 ];
 
 const PATIENT_NAV = [

@@ -107,18 +107,6 @@ export const ConsultationsService = {
       [meetLink ?? null, appointmentId]
     );
 
-    // Create consultation session record
-    await db.query(
-      `INSERT INTO consultation_sessions (appointment_id, session_status, video_room_url, started_at)
-       VALUES ($1, 'in_progress', $2, NOW())
-       ON CONFLICT (appointment_id) DO UPDATE SET
-         session_status = 'in_progress',
-         video_room_url = COALESCE(EXCLUDED.video_room_url, consultation_sessions.video_room_url),
-         started_at = NOW(),
-         updated_at = NOW()`,
-      [appointmentId, meetLink ?? null]
-    );
-
     return { success: true, message: 'Consultation started.' };
   },
 
@@ -152,13 +140,6 @@ export const ConsultationsService = {
       [appointmentId]
     );
 
-    await db.query(
-      `UPDATE consultation_sessions
-       SET session_status = 'completed', completed_at = NOW(), updated_at = NOW()
-       WHERE appointment_id = $1`,
-      [appointmentId]
-    );
-
     return { success: true, message: 'Consultation completed.' };
   },
 
@@ -173,11 +154,6 @@ export const ConsultationsService = {
     }
     await db.query(
       `UPDATE appointments SET meet_link = $1, updated_at = NOW() WHERE id = $2`,
-      [meetLink, appointmentId]
-    );
-    await db.query(
-      `UPDATE consultation_sessions SET video_room_url = $1, updated_at = NOW()
-       WHERE appointment_id = $2`,
       [meetLink, appointmentId]
     );
     return { success: true, message: 'Meet link saved.' };

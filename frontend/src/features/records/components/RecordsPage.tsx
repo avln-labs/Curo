@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { patientApi } from '../../../shared/api';
+import { patientApi, bookingsApi, api } from '../../../shared/api';
 
 interface PatientProfile {
   full_name: string;
@@ -27,6 +27,14 @@ const GENDER_LABELS: Record<string, string> = {
   prefer_not_to_say: 'Prefer not to say',
 };
 
+function canJoinConsultation(slotDate: string, slotTime: string) {
+  if (!slotDate || !slotTime) return false;
+  const startTimeStr = `${slotDate}T${slotTime.slice(0,5)}:00`;
+  const startTime = new Date(startTimeStr).getTime();
+  const now = Date.now();
+  return now >= (startTime - 10 * 60 * 1000);
+}
+
 export function RecordsPage() {
   const { user } = useAuth();
   const isPatient = user?.role === 'PATIENT';
@@ -35,6 +43,38 @@ export function RecordsPage() {
   const [thread, setThread]     = useState<HealthThread | null>(null);
   const [loading, setLoading]   = useState(isPatient);
   const [tab, setTab]           = useState<'overview' | 'prescriptions' | 'reports'>('overview');
+
+  const [rescheduleAppt, setRescheduleAppt] = useState<any>(null);
+  const [rescheduleDate, setRescheduleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [slots, setSlots] = useState<{ time: string; available: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!rescheduleAppt) return;
+    async function loadSlots() {
+      try {
+        const res = await api.get<{ success: boolean; data: any }>(`/doctors/${rescheduleAppt.doctor_slug}/slots?date=${rescheduleDate}`);
+        if (res.data?.success) setSlots(res.data.data.slots);
+      } catch {
+        setSlots([]);
+      }
+    }
+    loadSlots();
+  }, [rescheduleAppt, rescheduleDate]);
+
+  const handleRescheduleSubmit = async () => {
+    if (!rescheduleTime) return alert('Select a time slot');
+    setLoading(true);
+    const res = await bookingsApi.reschedule(rescheduleAppt.id, { slotDate: rescheduleDate, slotTime: rescheduleTime });
+    if (res.data?.success) {
+      setRescheduleAppt(null);
+      const threadRes = await patientApi.getMyRecords();
+      if (threadRes.data?.success) setThread(threadRes.data.data as unknown as HealthThread);
+    } else {
+      alert(res.error || 'Failed to reschedule');
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!isPatient) return;
@@ -50,6 +90,19 @@ export function RecordsPage() {
     }
     load();
   }, [isPatient]);
+
+  const handleCancel = async (id: string) => {
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
+    setLoading(true);
+    const res = await bookingsApi.cancel(id);
+    if (res.data?.success) {
+      const threadRes = await patientApi.getMyRecords();
+      if (threadRes.data?.success) setThread(threadRes.data.data as unknown as HealthThread);
+    } else {
+      alert(res.error || 'Failed to cancel');
+    }
+    setLoading(false);
+  };
 
   // ── Doctor view: simple empty state (health threads are in /health-threads) ──
   if (!isPatient) {
@@ -189,7 +242,7 @@ export function RecordsPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Date</th><th>Doctor</th><th>Complaint</th><th>Type</th><th>Status</th>
+                  <th>Date</th><th>Doctor</th><th>Complaint</th><th>Type</th><th>Status</th><th>Meet Link</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,6 +253,27 @@ export function RecordsPage() {
                     <td className="text-sm">{a.chief_complaint}</td>
                     <td><span className="badge badge-neutral">{a.consultation_type}</span></td>
                     <td><span className="badge badge-success">{a.status}</span></td>
+                    <td>
+                      {a.meet_link ? (
+                        canJoinConsultation(a.slot_date, a.slot_time) ? (
+                          <a href={a.meet_link} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">Join Consultation</a>
+                        ) : (
+                          <span className="text-xs text-muted">Available 10 mins before start</span>
+                        )
+                      ) : (
+                        <span className="text-xs text-muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {(a.status === 'confirmed' || a.status === 'payment_pending') && (
+                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => handleCancel(a.id)}>Cancel</button>
+                        )}
+                        {a.status === 'confirmed' && (
+                          <button className="btn btn-ghost btn-sm" onClick={() => setRescheduleAppt(a)}>Reschedule</button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -276,6 +350,45 @@ export function RecordsPage() {
             </table>
           </div>
         )
+      )}
+
+      {/* Reschedule Modal */}
+      {rescheduleAppt && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="card" style={{ padding: 24, width: '100%', maxWidth: 400 }}>
+            <h2 style={{ marginBottom: 16 }}>Reschedule Appointment</h2>
+            <div className="form-group">
+              <label className="form-label">Select Date</label>
+              <input type="date" className="input" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
+            </div>
+            <div className="form-group" style={{ marginTop: 16 }}>
+              <label className="form-label">Available Slots</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8, marginTop: 8, maxHeight: 200, overflowY: 'auto' }}>
+                {slots.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>No slots available.</div>
+                ) : slots.map(s => (
+                  <button
+                    key={s.time}
+                    disabled={!s.available}
+                    onClick={() => setRescheduleTime(s.time)}
+                    style={{
+                      padding: '8px 0', borderRadius: 'var(--radius)', border: rescheduleTime === s.time ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      background: rescheduleTime === s.time ? 'var(--primary-muted)' : s.available ? 'var(--surface)' : 'var(--background)',
+                      color: rescheduleTime === s.time ? 'var(--primary)' : s.available ? 'var(--text)' : 'var(--text-tertiary)',
+                      cursor: s.available ? 'pointer' : 'not-allowed', fontSize: '0.875rem'
+                    }}
+                  >
+                    {s.time}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+              <button className="btn btn-secondary" onClick={() => setRescheduleAppt(null)}>Close</button>
+              <button className={`btn btn-primary ${loading ? 'loading' : ''}`} onClick={handleRescheduleSubmit} disabled={!rescheduleTime || loading}>Confirm</button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
