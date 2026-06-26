@@ -6,6 +6,7 @@
  */
 
 import { db } from '../shared/database';
+import { NotificationService } from '../shared/notifications';
 
 interface CreateBookingData {
   patientId: string;
@@ -149,15 +150,23 @@ export const BookingsService = {
       chief_complaint: string;
       consultation_type: string;
       google_refresh_token: string | null;
+      patient_mobile: string;
+      patient_email: string | null;
+      doctor_mobile: string;
+      doctor_email: string | null;
     }>(
       `SELECT
          a.doctor_id, a.slot_date, a.slot_time, a.chief_complaint,
          d.full_name as doctor_name, d.google_refresh_token,
          pat.full_name as patient_name,
-         ct.type as consultation_type
+         ct.type as consultation_type,
+         u_pat.mobile as patient_mobile, u_pat.email as patient_email,
+         u_doc.mobile as doctor_mobile, u_doc.email as doctor_email
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN patients pat ON pat.id = a.patient_id
+       JOIN users u_pat ON u_pat.id = pat.user_id
+       JOIN users u_doc ON u_doc.id = d.user_id
        LEFT JOIN consultation_types ct ON ct.id = a.consultation_type_id
        WHERE a.id = $1`,
       [appointmentId]
@@ -176,6 +185,8 @@ export const BookingsService = {
           slotDate: typeof apptData.slot_date === 'object' ? apptData.slot_date.toISOString().split('T')[0] : apptData.slot_date,
           slotTime: apptData.slot_time,
           chiefComplaint: apptData.chief_complaint,
+          doctorEmail: apptData.doctor_email,
+          patientEmail: apptData.patient_email,
         });
         meetLink = meetRes.meetLink;
         calendarEventId = meetRes.calendarEventId;
@@ -189,6 +200,46 @@ export const BookingsService = {
       `UPDATE appointments SET status = 'confirmed', slot_held_until = NULL, meet_link = COALESCE($2, meet_link), calendar_event_id = COALESCE($3, calendar_event_id), updated_at = NOW() WHERE id = $1`,
       [appointmentId, meetLink, calendarEventId]
     );
+
+    if (apptData) {
+      const formatTime12H = (tStr: string) => {
+        if (!tStr) return '';
+        const [hStr, mStr] = tStr.split(':');
+        const h = parseInt(hStr, 10);
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 === 0 ? 12 : h % 12;
+        return `${h12}:${mStr.slice(0, 2)} ${suffix}`;
+      };
+
+      const formattedDate = new Date(apptData.slot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+      const formattedTime = formatTime12H(apptData.slot_time);
+
+      // Notify Patient
+      NotificationService.sendSms(
+        apptData.patient_mobile, 
+        `Your appointment with Dr. ${apptData.doctor_name} is confirmed for ${formattedDate} at ${formattedTime}.`
+      );
+      if (apptData.patient_email) {
+        NotificationService.sendEmail(
+          apptData.patient_email,
+          'Appointment Confirmed',
+          `Your appointment with Dr. ${apptData.doctor_name} is confirmed for ${formattedDate} at ${formattedTime}.`
+        );
+      }
+
+      // Notify Doctor
+      NotificationService.sendSms(
+        apptData.doctor_mobile,
+        `New Appointment: ${apptData.patient_name} has booked an appointment for ${formattedDate} at ${formattedTime}.`
+      );
+      if (apptData.doctor_email) {
+        NotificationService.sendEmail(
+          apptData.doctor_email,
+          'New Appointment Booked',
+          `${apptData.patient_name} has booked an appointment for ${formattedDate} at ${formattedTime}. Complaint: ${apptData.chief_complaint}`
+        );
+      }
+    }
 
     return { success: true, message: 'Appointment confirmed.' };
   },

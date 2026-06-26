@@ -173,6 +173,7 @@ export const DoctorService = {
         specialisations = $3,
         onboarding_step = GREATEST(onboarding_step, 1),
         verification_status = 'verified',
+        signature_url = COALESCE($5, signature_url),
         updated_at = NOW()
        WHERE id = $4`,
       [
@@ -180,6 +181,7 @@ export const DoctorService = {
         data.fullName,
         data.specialisations,
         doctorId,
+        data.signatureBase64 || null,
       ]
     );
 

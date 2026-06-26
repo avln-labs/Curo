@@ -284,11 +284,11 @@ export function DoctorOnboardingPage() {
     setError('');
     const { data, error: err } = await doctorApi.completeOnboarding({ upiId, upiQrUrl });
     setSaving(false);
-    
+
     if (err || !data?.success) {
       return setError(err || data?.message || 'Failed to complete onboarding. Please try again.');
     }
-    
+
     setSubmitted(true);
   }
 
@@ -541,12 +541,12 @@ export function DoctorOnboardingPage() {
             <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
               Patients will use these UPI details to pay for their consultation during booking. You can also update this later from your Dashboard.
             </p>
-            
+
             <div className="form-group">
               <label className="form-label">UPI ID / VPA</label>
               <input type="text" className="input" placeholder="e.g. yourname@okicici" value={upiId} onChange={e => setUpiId(e.target.value)} />
             </div>
-            
+
             <div className="form-group">
               <label className="form-label">UPI QR Code Image</label>
               <input type="file" accept="image/*" className="input" onChange={(e) => {
@@ -563,7 +563,7 @@ export function DoctorOnboardingPage() {
               }} />
               <div className="form-hint">Upload your QR code image (max 2MB). It will be shown to patients during payment.</div>
             </div>
-            
+
             {upiQrUrl && (
               <div style={{ marginTop: 16, border: '1px solid var(--border)', padding: 16, borderRadius: 8, display: 'inline-block' }}>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>QR Preview:</div>

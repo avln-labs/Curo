@@ -18,6 +18,8 @@ export function DoctorProfilePage() {
   const [specialisations, setSpecialisations] = useState('');
   const [email, setEmail] = useState('');
   const [bookingUrl, setBookingUrl] = useState('');
+  const [signatureBase64, setSignatureBase64] = useState<string>('');
+  const [hasSignature, setHasSignature] = useState(false);
 
   // ── Fee Fields ──
   const [onlineFee, setOnlineFee] = useState('');
@@ -48,6 +50,7 @@ export function DoctorProfilePage() {
         if (d.specialisations?.length) setSpecialisations(d.specialisations.join(', '));
         if (d.email) setEmail(d.email);
         if (d.slug) setBookingUrl(`curo.app/${d.slug}`);
+        if (d.signature_url) setHasSignature(true);
 
         const consultationTypes = d.consultationTypes as any[] | undefined;
         if (consultationTypes) {
@@ -86,6 +89,16 @@ export function DoctorProfilePage() {
     return str.split(',').map((s) => s.trim()).filter(Boolean);
   }
 
+  function handleSignatureUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setSignatureBase64(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function handleSaveDetails() {
     setError(''); setSuccessMsg('');
     const specs = toArray(specialisations);
@@ -97,6 +110,7 @@ export function DoctorProfilePage() {
       fullName: fullName.trim(),
       specialisations: specs,
       email: email.trim() || undefined,
+      signatureBase64: signatureBase64 || undefined,
     });
     setSaving(false);
 
@@ -214,6 +228,19 @@ export function DoctorProfilePage() {
                 <option value="Dentist">Dentist</option>
                 <option value="Other">Other</option>
               </select>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">E-Signature</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <input type="file" accept="image/png, image/jpeg" className="input" onChange={handleSignatureUpload} />
+                {hasSignature && !signatureBase64 && (
+                  <span className="text-sm text-muted">✅ Signature already uploaded</span>
+                )}
+                {signatureBase64 && (
+                  <img src={signatureBase64} alt="Signature Preview" style={{ height: 40, objectFit: 'contain' }} />
+                )}
+              </div>
+              <div className="form-hint">Upload a PNG or JPEG of your signature to automatically embed in prescriptions.</div>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>

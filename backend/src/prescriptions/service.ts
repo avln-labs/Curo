@@ -95,6 +95,7 @@ export const PrescriptionsService = {
       `SELECT
          pr.id, pr.serial_number, pr.diagnosis, pr.investigations, pr.advice, pr.followup_date, pr.created_at,
          d.full_name as doctor_name, d.qualifications, d.registration_number, d.city, d.clinic_name, d.specialisations,
+         d.signature_url,
          p.full_name as patient_name, p.date_of_birth, p.gender,
          u.mobile as patient_mobile,
          a.slot_date
@@ -113,7 +114,7 @@ export const PrescriptionsService = {
       `SELECT drug_name, dose, frequency, duration, instructions
        FROM prescription_medications
        WHERE prescription_id = $1
-       ORDER BY created_at ASC`,
+       ORDER BY sort_order ASC`,
       [prescriptionId]
     );
 
@@ -230,6 +231,25 @@ export const PrescriptionsService = {
       if (data.followup_date) {
         doc.fontSize(11).font('Helvetica-Bold').text(`Next follow-up: `, { continued: true })
            .font('Helvetica').text(new Date(data.followup_date).toLocaleDateString());
+        doc.moveDown(2);
+      } else {
+        doc.moveDown(2);
+      }
+
+      // E-Signature
+      if ((data as any).signature_url) {
+        try {
+          const sigBase64 = (data as any).signature_url.split(',')[1];
+          if (sigBase64) {
+            const imgBuffer = Buffer.from(sigBase64, 'base64');
+            // Align to the right
+            doc.image(imgBuffer, 400, doc.y, { fit: [100, 50], align: 'right' });
+            doc.moveDown(0.2);
+            doc.fontSize(10).font('Helvetica-Bold').text('Dr. Signature', 400, doc.y + 55, { align: 'center', width: 100 });
+          }
+        } catch (err) {
+          console.error('Failed to embed signature image:', err);
+        }
       }
 
       // Footer

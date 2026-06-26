@@ -15,6 +15,18 @@ interface BookingWizardProps {
 
 type Step = 'SLOT' | 'AUTH' | 'PATIENT' | 'SYMPTOMS' | 'PAYMENT' | 'SUCCESS';
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+function formatTime12H(time24: string): string {
+  if (!time24) return '';
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${mStr.slice(0, 2)} ${suffix}`;
+}
+
 export function BookingWizard({ doctor }: BookingWizardProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, sendOtp, verifyOtp } = useAuth();
@@ -28,6 +40,86 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
   const [slots, setSlots] = useState<{ time: string; available: boolean }[]>([]);
   const [slotDuration, setSlotDuration] = useState(15);
   const [selectedTime, setSelectedTime] = useState<string>('');
+
+  // Calendar states
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  const getCalendarCells = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return [
+      ...Array(firstDay).fill(null),
+      ...Array.from({ length: daysInMonth }, (_, i) => i + 1)
+    ];
+  };
+
+  const prevMonth = () => {
+    setCurrentMonth(prev => {
+      const d = new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+      const now = new Date();
+      const minDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      if (d < minDate) return prev;
+      return d;
+    });
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleDateSelect = (day: number) => {
+    const year = currentMonth.getFullYear();
+    const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${dayStr}`);
+    setSelectedTime('');
+  };
+
+  const isDateInPast = (day: number) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateToCheck = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    return dateToCheck < today;
+  };
+
+  const isToday = (day: number) => {
+    const today = new Date();
+    return (
+      day === today.getDate() &&
+      currentMonth.getMonth() === today.getMonth() &&
+      currentMonth.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const isSelected = (day: number) => {
+    if (!selectedDate) return false;
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    return (
+      day === d &&
+      currentMonth.getMonth() === (m - 1) &&
+      currentMonth.getFullYear() === y
+    );
+  };
+
+  const getSlotGroups = () => {
+    const morning: typeof slots = [];
+    const afternoon: typeof slots = [];
+    const evening: typeof slots = [];
+
+    slots.forEach(s => {
+      const h = parseInt(s.time.split(':')[0], 10);
+      if (h < 12) morning.push(s);
+      else if (h < 17) afternoon.push(s);
+      else evening.push(s);
+    });
+
+    return { morning, afternoon, evening };
+  };
 
   // Step 2a: Auth
   const [mobile, setMobile] = useState('');
@@ -187,17 +279,24 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
 
   if (step === 'SUCCESS') {
     return (
-      <div className="card" style={{ padding: 40, textAlign: 'center' }}>
+      <div className="card" style={{ padding: 40, textAlign: 'center', borderRadius: '12px', border: '1px solid #e6dfd8', background: '#faf9f5' }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--success-bg)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: 32 }}>✓</div>
         <h2 style={{ marginBottom: 16 }}>Booking Confirmed!</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Your appointment with Dr. {doctor.full_name} is confirmed for {new Date(selectedDate).toLocaleDateString()} at {selectedTime}.</p>
-        <button className="btn btn-primary" onClick={() => navigate('/records')}>Go to My Records</button>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Your appointment with Dr. {doctor.full_name} is confirmed for {new Date(selectedDate).toLocaleDateString()} at {formatTime12H(selectedTime)}.</p>
+        <button className="btn btn-primary" onClick={() => navigate('/records')} style={{ background: '#cc785c', borderColor: '#cc785c', color: '#ffffff' }}>Go to My Records</button>
       </div>
     );
   }
 
   return (
-    <div className="card">
+    <div className="card" style={{
+      '--primary': '#cc785c',
+      '--primary-hover': '#a9583e',
+      '--primary-muted': '#faf0e8',
+      borderRadius: '12px',
+      border: '1px solid #e6dfd8',
+      background: '#faf9f5',
+    } as React.CSSProperties}>
       <div className="card-header" style={{ paddingBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 className="card-title">Book Appointment</h2>
@@ -224,40 +323,189 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
         {step === 'SLOT' && (
           <div>
             <div className="form-group">
-              <label className="form-label">Select Date</label>
-              <input type="date" className="input" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
-            </div>
-
-            <div className="form-group" style={{ marginTop: 24 }}>
-              <label className="form-label">Available Slots</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 10, marginTop: 8 }}>
-                {slots.length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', background: 'var(--surface)', borderRadius: 'var(--radius)' }}>
-                    No slots available for this date.
+              <label className="form-label" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: '1.2rem', letterSpacing: '-0.2px', marginBottom: 12 }}>Select Date</label>
+              
+              <div style={{ background: '#faf9f5', border: '1px solid #e6dfd8', borderRadius: '12px', padding: '16px', marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#141413' }}>
+                    {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      type="button"
+                      className="btn btn-ghost btn-sm" 
+                      onClick={prevMonth}
+                      style={{ padding: '4px 8px', minWidth: 'unset', color: '#6c6a64', cursor: 'pointer' }}
+                    >
+                      ←
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn btn-ghost btn-sm" 
+                      onClick={nextMonth}
+                      style={{ padding: '4px 8px', minWidth: 'unset', color: '#6c6a64', cursor: 'pointer' }}
+                    >
+                      →
+                    </button>
                   </div>
-                ) : slots.map(s => (
-                  <button
-                    key={s.time}
-                    disabled={!s.available}
-                    onClick={() => setSelectedTime(s.time)}
-                    style={{
-                      padding: '8px 0',
-                      borderRadius: 'var(--radius)',
-                      border: selectedTime === s.time ? '2px solid var(--primary)' : '1px solid var(--border)',
-                      background: selectedTime === s.time ? 'var(--primary-muted)' : s.available ? 'var(--surface)' : 'var(--background)',
-                      color: selectedTime === s.time ? 'var(--primary)' : s.available ? 'var(--text)' : 'var(--text-tertiary)',
-                      cursor: s.available ? 'pointer' : 'not-allowed',
-                      fontWeight: selectedTime === s.time ? 600 : 400,
-                    }}
-                  >
-                    {s.time}
-                  </button>
-                ))}
+                </div>
+
+                <div className="calendar-grid">
+                  {DAY_NAMES.map(d => (
+                    <div key={d} className="cal-day-name" style={{ color: '#8e8b82', fontWeight: 500 }}>{d}</div>
+                  ))}
+                  {getCalendarCells().map((day, i) => {
+                    if (day === null) {
+                      return <div key={`empty-${i}`} />;
+                    }
+                    const isPast = isDateInPast(day);
+                    const isSel = isSelected(day);
+                    const isTday = isToday(day);
+
+                    let style: React.CSSProperties = {
+                      aspectRatio: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '6px',
+                      fontSize: '0.8125rem',
+                      cursor: isPast ? 'default' : 'pointer',
+                      color: isPast ? '#8e8b82' : isSel ? '#ffffff' : '#141413',
+                      background: isSel ? '#cc785c' : isTday ? '#efe9de' : 'transparent',
+                      fontWeight: isSel || isTday ? 600 : 400,
+                      border: isTday && !isSel ? '1px solid #cc785c' : 'none',
+                    };
+
+                    return (
+                      <div
+                        key={`day-${day}`}
+                        style={style}
+                        onClick={() => {
+                          if (!isPast) {
+                            handleDateSelect(day);
+                          }
+                        }}
+                        className={`cal-day ${isPast ? 'disabled' : ''} ${isSel ? 'selected' : ''}`}
+                      >
+                        {day}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
+            <div className="form-group" style={{ marginTop: 24 }}>
+              <label className="form-label" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: '1.2rem', letterSpacing: '-0.2px', marginBottom: 12 }}>Available Slots</label>
+              
+              {slots.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: '#8e8b82', background: '#faf9f5', border: '1px dashed #e6dfd8', borderRadius: '12px' }}>
+                  No slots available for this date.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {/* Morning Slots */}
+                  {getSlotGroups().morning.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6c6a64', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Morning</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+                        {getSlotGroups().morning.map(s => (
+                          <button
+                            key={s.time}
+                            type="button"
+                            disabled={!s.available}
+                            onClick={() => setSelectedTime(s.time)}
+                            style={{
+                              padding: '10px 0',
+                              borderRadius: '8px',
+                              border: selectedTime === s.time ? '1px solid #cc785c' : '1px solid #e6dfd8',
+                              background: selectedTime === s.time ? '#faf0e8' : s.available ? '#ffffff' : '#f5f0e8',
+                              color: selectedTime === s.time ? '#cc785c' : s.available ? '#141413' : '#8e8b82',
+                              cursor: s.available ? 'pointer' : 'not-allowed',
+                              fontWeight: selectedTime === s.time ? 600 : 400,
+                              fontSize: '0.85rem',
+                              textDecoration: s.available ? 'none' : 'line-through',
+                            }}
+                          >
+                            {formatTime12H(s.time)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Afternoon Slots */}
+                  {getSlotGroups().afternoon.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6c6a64', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Afternoon</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+                        {getSlotGroups().afternoon.map(s => (
+                          <button
+                            key={s.time}
+                            type="button"
+                            disabled={!s.available}
+                            onClick={() => setSelectedTime(s.time)}
+                            style={{
+                              padding: '10px 0',
+                              borderRadius: '8px',
+                              border: selectedTime === s.time ? '1px solid #cc785c' : '1px solid #e6dfd8',
+                              background: selectedTime === s.time ? '#faf0e8' : s.available ? '#ffffff' : '#f5f0e8',
+                              color: selectedTime === s.time ? '#cc785c' : s.available ? '#141413' : '#8e8b82',
+                              cursor: s.available ? 'pointer' : 'not-allowed',
+                              fontWeight: selectedTime === s.time ? 600 : 400,
+                              fontSize: '0.85rem',
+                              textDecoration: s.available ? 'none' : 'line-through',
+                            }}
+                          >
+                            {formatTime12H(s.time)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Evening Slots */}
+                  {getSlotGroups().evening.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6c6a64', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Evening</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+                        {getSlotGroups().evening.map(s => (
+                          <button
+                            key={s.time}
+                            type="button"
+                            disabled={!s.available}
+                            onClick={() => setSelectedTime(s.time)}
+                            style={{
+                              padding: '10px 0',
+                              borderRadius: '8px',
+                              border: selectedTime === s.time ? '1px solid #cc785c' : '1px solid #e6dfd8',
+                              background: selectedTime === s.time ? '#faf0e8' : s.available ? '#ffffff' : '#f5f0e8',
+                              color: selectedTime === s.time ? '#cc785c' : s.available ? '#141413' : '#8e8b82',
+                              cursor: s.available ? 'pointer' : 'not-allowed',
+                              fontWeight: selectedTime === s.time ? 600 : 400,
+                              fontSize: '0.85rem',
+                              textDecoration: s.available ? 'none' : 'line-through',
+                            }}
+                          >
+                            {formatTime12H(s.time)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn btn-primary" onClick={handleSlotNext} disabled={!selectedTime}>Continue</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSlotNext} 
+                disabled={!selectedTime}
+                style={{ background: '#cc785c', borderColor: '#cc785c', color: '#ffffff' }}
+              >
+                {selectedTime ? `Confirm ${formatTime12H(selectedTime)} →` : 'Select a slot →'}
+              </button>
             </div>
           </div>
         )}

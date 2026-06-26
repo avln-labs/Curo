@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { bookingsApi } from '../../../shared/api';
 
 function save(data: Record<string, unknown>) {
   const prev = JSON.parse(localStorage.getItem('curo.booking') || '{}');
@@ -63,20 +64,52 @@ export function BookingPayment() {
 
   function removeFile(i: number) { setFiles((prev) => prev.filter((_, idx) => idx !== i)); }
 
-  function pay() {
+  async function pay() {
     setPaying(true);
-    const conf = {
-      bookingId: `BKG-${Math.floor(Math.random() * 90000) + 10000}`,
-      patientName: data.patientName || 'Patient',
-      date: data.date || '2026-06-10',
-      slot: data.slot || '10:00',
-      doctor: 'Dr. Arun Sharma',
-      complaint: data.complaint || 'Consultation',
-      consultType: data.consultType || 'Online',
-      amount: TOTAL,
-    };
-    localStorage.setItem('curo.confirmation', JSON.stringify(conf));
-    setTimeout(() => navigate('/booking/confirmation'), 1000);
+
+    try {
+      // 1. Create booking in backend
+      const createRes = await bookingsApi.create({
+        doctorSlug: 'dr-dr-sufyaan-ahmed', // or dynamically from context if available
+        slotDate: data.date || '2026-06-10',
+        slotTime: data.slot || '10:00',
+        consultationType: data.consultType || 'online',
+        chiefComplaint: data.complaint || 'General Consultation',
+      });
+
+      if (!createRes.data?.success || !createRes.data.appointment) {
+        alert('Failed to create booking: ' + (createRes.data?.message || createRes.error));
+        setPaying(false);
+        return;
+      }
+
+      const appointmentId = (createRes.data.appointment as any).id;
+
+      // 2. Confirm payment
+      const confirmRes = await bookingsApi.confirmPayment(appointmentId, { utrNumber: 'UPI123456789' });
+      if (!confirmRes.data?.success) {
+        alert('Failed to confirm payment: ' + (confirmRes.data?.message || confirmRes.error));
+        setPaying(false);
+        return;
+      }
+
+      const conf = {
+        bookingId: `BKG-${Math.floor(Math.random() * 90000) + 10000}`,
+        patientName: data.patientName || 'Patient',
+        date: data.date || '2026-06-10',
+        slot: data.slot || '10:00',
+        doctor: 'Dr. Arun Sharma',
+        complaint: data.complaint || 'Consultation',
+        consultType: data.consultType || 'Online',
+        amount: TOTAL,
+      };
+      localStorage.setItem('curo.confirmation', JSON.stringify(conf));
+      navigate('/booking/confirmation');
+    } catch (err) {
+      alert('An error occurred during booking.');
+    } finally {
+      setPaying(false);
+    }
   }
 
   return (

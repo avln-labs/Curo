@@ -14,6 +14,7 @@ export const OnboardingProfileSchema = z.object({
     .max(40)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens')
     .optional(),
+  signatureBase64: z.string().optional(),
 });
 
 export type OnboardingProfileData = z.infer<typeof OnboardingProfileSchema>;

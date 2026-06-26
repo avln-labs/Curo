@@ -48,9 +48,9 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 const AVAILABLE_DATES = [9, 10, 11, 12, 16, 17, 18, 19, 23, 24, 25, 26];
 
 const SLOTS_BY_DATE: Record<number, { time: string; available: boolean }[]> = {
-  9:  [{ time: '09:00', available: false }, { time: '09:30', available: false }, { time: '10:00', available: true }, { time: '10:30', available: true }, { time: '11:00', available: true }, { time: '11:30', available: true }],
-  10: [{ time: '09:00', available: true  }, { time: '09:30', available: true  }, { time: '10:00', available: true }, { time: '10:30', available: false }, { time: '11:00', available: true }, { time: '11:30', available: true }],
-  11: [{ time: '09:00', available: true  }, { time: '09:30', available: true  }, { time: '10:00', available: true }, { time: '10:30', available: true  }, { time: '11:00', available: true }, { time: '11:30', available: false }],
+  9: [{ time: '09:00', available: false }, { time: '09:30', available: false }, { time: '10:00', available: true }, { time: '10:30', available: true }, { time: '11:00', available: true }, { time: '11:30', available: true }, { time: '13:00', available: true }, { time: '14:30', available: true }, { time: '17:00', available: true }],
+  10: [{ time: '09:00', available: true }, { time: '09:30', available: true }, { time: '10:00', available: true }, { time: '10:30', available: false }, { time: '11:00', available: true }, { time: '11:30', available: true }, { time: '14:00', available: false }, { time: '18:30', available: true }],
+  11: [{ time: '09:00', available: true }, { time: '09:30', available: true }, { time: '10:00', available: true }, { time: '10:30', available: true }, { time: '11:00', available: true }, { time: '11:30', available: false }],
 };
 
 export function BookingSlotSelection() {
@@ -72,9 +72,23 @@ export function BookingSlotSelection() {
   const slots = selectedDate ? (SLOTS_BY_DATE[selectedDate] || SLOTS_BY_DATE[10]) : [];
 
   function next() {
-    save({ date: `2026-06-${String(selectedDate).padStart(2,'0')}`, slot: selectedSlot });
+    save({ date: `2026-06-${String(selectedDate).padStart(2, '0')}`, slot: selectedSlot });
     navigate('/booking/payment');
   }
+
+  function format12Hour(time24: string) {
+    const [h, m] = time24.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, '0')} ${period}`;
+  }
+
+  const morningSlots = slots.filter(s => parseInt(s.time.split(':')[0]) < 12);
+  const afternoonSlots = slots.filter(s => {
+    const h = parseInt(s.time.split(':')[0]);
+    return h >= 12 && h < 17;
+  });
+  const eveningSlots = slots.filter(s => parseInt(s.time.split(':')[0]) >= 17);
 
   return (
     <div className="booking-shell">
@@ -107,7 +121,7 @@ export function BookingSlotSelection() {
               const isSel = selectedDate === day;
               const isToday = day === 9;
               let cls = 'cal-day';
-              if (isPast)  cls += ' disabled';
+              if (isPast) cls += ' disabled';
               else if (isSel) cls += ' selected';
               else if (isAvail) cls += ' available';
               else cls += ' disabled';
@@ -138,23 +152,67 @@ export function BookingSlotSelection() {
 
         {/* Time slots */}
         {selectedDate && (
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 12 }}>
+          <div style={{ marginBottom: 80 }}>
+            <div style={{ fontWeight: 600, marginBottom: 16 }}>
               Available times — June {selectedDate}
             </div>
-            <div className="slot-grid" style={{ marginBottom: 80 }}>
-              {slots.map((s) => (
-                <button
-                  key={s.time}
-                  className={`slot ${!s.available ? 'taken' : selectedSlot === s.time ? 'selected' : 'available'}`}
-                  onClick={() => s.available && setSelectedSlot(s.time)}
-                  disabled={!s.available}
-                >
-                  {s.time}
-                  {!s.available && <span style={{ marginLeft: 4, fontSize: '0.65rem' }}>Taken</span>}
-                </button>
-              ))}
-            </div>
+
+            {morningSlots.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Morning</div>
+                <div className="slot-grid">
+                  {morningSlots.map((s) => (
+                    <button
+                      key={s.time}
+                      className={`slot ${!s.available ? 'taken' : selectedSlot === s.time ? 'selected' : 'available'}`}
+                      onClick={() => s.available && setSelectedSlot(s.time)}
+                      disabled={!s.available}
+                    >
+                      {format12Hour(s.time)}
+                      {!s.available && <span style={{ marginLeft: 4, fontSize: '0.65rem' }}>Taken</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {afternoonSlots.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Afternoon</div>
+                <div className="slot-grid">
+                  {afternoonSlots.map((s) => (
+                    <button
+                      key={s.time}
+                      className={`slot ${!s.available ? 'taken' : selectedSlot === s.time ? 'selected' : 'available'}`}
+                      onClick={() => s.available && setSelectedSlot(s.time)}
+                      disabled={!s.available}
+                    >
+                      {format12Hour(s.time)}
+                      {!s.available && <span style={{ marginLeft: 4, fontSize: '0.65rem' }}>Taken</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {eveningSlots.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Evening</div>
+                <div className="slot-grid">
+                  {eveningSlots.map((s) => (
+                    <button
+                      key={s.time}
+                      className={`slot ${!s.available ? 'taken' : selectedSlot === s.time ? 'selected' : 'available'}`}
+                      onClick={() => s.available && setSelectedSlot(s.time)}
+                      disabled={!s.available}
+                    >
+                      {format12Hour(s.time)}
+                      {!s.available && <span style={{ marginLeft: 4, fontSize: '0.65rem' }}>Taken</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

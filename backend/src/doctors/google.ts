@@ -69,6 +69,8 @@ export const GoogleCalendarService = {
       slotDate: string;
       slotTime: string;
       chiefComplaint: string;
+      doctorEmail?: string | null;
+      patientEmail?: string | null;
     }
   ) {
     const accessToken = await this.getAccessToken(refreshToken);
@@ -78,7 +80,11 @@ export const GoogleCalendarService = {
     const startObj = new Date(startTimeStr);
     const endObj = new Date(startObj.getTime() + 15 * 60 * 1000); // default 15 mins
 
-    const eventBody = {
+    const attendees = [];
+    if (appointment.doctorEmail) attendees.push({ email: appointment.doctorEmail });
+    if (appointment.patientEmail) attendees.push({ email: appointment.patientEmail });
+
+    const eventBody: any = {
       summary: `Online Consultation: Dr. ${appointment.doctorName} & ${appointment.patientName}`,
       description: `Chief Complaint: ${appointment.chiefComplaint}\nAppointment ID: ${appointment.id}`,
       start: { dateTime: startObj.toISOString() },
@@ -91,7 +97,11 @@ export const GoogleCalendarService = {
       },
     };
 
-    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
+    if (attendees.length > 0) {
+      eventBody.attendees = attendees;
+    }
+
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,

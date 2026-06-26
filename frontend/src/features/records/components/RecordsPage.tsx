@@ -29,10 +29,20 @@ const GENDER_LABELS: Record<string, string> = {
 
 function canJoinConsultation(slotDate: string, slotTime: string) {
   if (!slotDate || !slotTime) return false;
-  const startTimeStr = `${slotDate}T${slotTime.slice(0,5)}:00`;
+  const datePart = new Date(slotDate).toISOString().split('T')[0];
+  const startTimeStr = `${datePart}T${slotTime.slice(0,5)}:00`;
   const startTime = new Date(startTimeStr).getTime();
   const now = Date.now();
   return now >= (startTime - 10 * 60 * 1000);
+}
+
+function formatTime12H(time24: string): string {
+  if (!time24) return '';
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${mStr.slice(0, 2)} ${suffix}`;
 }
 
 export function RecordsPage() {
@@ -139,8 +149,24 @@ export function RecordsPage() {
   const prescriptions = thread?.prescriptions || [];
   const documents = thread?.documents || [];
 
+  const startingSoonAppts = appointments.filter(a => a.status === 'confirmed' && canJoinConsultation(a.slot_date, a.slot_time));
+
   return (
     <main className="page">
+      {startingSoonAppts.length > 0 && (
+        <div style={{ background: 'var(--primary)', color: 'white', padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <strong>Appointment Starting Soon!</strong>
+            <div style={{ fontSize: '0.85rem', marginTop: 4 }}>Your consultation with {startingSoonAppts[0].doctor_name} is starting.</div>
+          </div>
+          {startingSoonAppts[0].meet_link && (
+            <a href={startingSoonAppts[0].meet_link} target="_blank" rel="noreferrer" className="btn" style={{ background: 'white', color: 'var(--primary)' }}>
+              Join Now
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="page-header">
         <div className="flex-between">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -248,7 +274,7 @@ export function RecordsPage() {
               <tbody>
                 {appointments.map((a) => (
                   <tr key={a.id}>
-                    <td className="text-sm">{a.slot_date}</td>
+                    <td className="text-sm">{new Date(a.slot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}</td>
                     <td className="text-sm font-medium">{a.doctor_name}</td>
                     <td className="text-sm">{a.chief_complaint}</td>
                     <td><span className="badge badge-neutral">{a.consultation_type}</span></td>
@@ -378,7 +404,7 @@ export function RecordsPage() {
                       cursor: s.available ? 'pointer' : 'not-allowed', fontSize: '0.875rem'
                     }}
                   >
-                    {s.time}
+                    {formatTime12H(s.time)}
                   </button>
                 ))}
               </div>
