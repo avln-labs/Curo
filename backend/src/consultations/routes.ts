@@ -12,6 +12,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../shared/middleware';
 import type { AuthRequest } from '../shared/middleware';
 import { ConsultationsService } from './service';
+import { SummaryService } from './summary';
 
 export const consultationRouter = Router();
 
@@ -69,6 +70,43 @@ consultationRouter.get(
     const data = await ConsultationsService.getAppointment(req.params.id, doctorId);
     if (!data) return res.status(404).json({ success: false, error: { message: 'Appointment not found.' } });
     return res.json({ success: true, data });
+  }
+);
+
+// ─── AI Pre-Consult Summary ──────────────────────────────────────────────────
+
+// GET /consultations/:id/summary — cached (generates on first request)
+consultationRouter.get(
+  '/:id/summary',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) return res.status(404).json({ success: false, error: { message: 'Doctor not found.' } });
+
+    const force = req.query.refresh === '1';
+    const data = await SummaryService.getOrGenerate(req.params.id, doctorId, force);
+    if (!data) return res.status(404).json({ success: false, error: { message: 'Appointment not found.' } });
+    return res.json({ success: true, data });
+  }
+);
+
+// PUT /consultations/:id/summary — save doctor-edited summary (original preserved)
+consultationRouter.put(
+  '/:id/summary',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    const { summary } = req.body as { summary?: string };
+    if (typeof summary !== 'string' || !summary.trim()) {
+      return res.status(400).json({ success: false, error: { message: 'Summary text is required.' } });
+    }
+    const doctorId = await getDoctorId(req.user!.userId);
+    if (!doctorId) return res.status(404).json({ success: false, error: { message: 'Doctor not found.' } });
+
+    const ok = await SummaryService.saveEdit(req.params.id, doctorId, summary);
+    if (!ok) return res.status(404).json({ success: false, error: { message: 'Appointment not found.' } });
+    return res.json({ success: true, message: 'Summary updated.' });
   }
 );
 

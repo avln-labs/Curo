@@ -21,7 +21,7 @@ export const ConsultationsService = {
          a.id, a.status, a.slot_date, a.slot_time,
          a.chief_complaint, a.complaint_description as description, ct.type as consultation_type, a.meet_link,
          a.created_at,
-         p.full_name as patient_name, p.date_of_birth, p.gender,
+         p.id as patient_id, p.full_name as patient_name, p.date_of_birth, p.gender, p.allergies,
          ct.fee, ct.duration_minutes,
          pr.id as prescription_id
        FROM appointments a

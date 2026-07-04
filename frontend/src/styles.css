@@ -1272,3 +1272,290 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   to { transform: rotate(360deg); }
 }
 
+
+/* ============================================================
+   DARK MODE — Design.md: "Dark mode is mandatory"
+   Softer contrast, no pure black/white, Claude-style readability
+   ============================================================ */
+
+[data-theme='dark'] {
+  --bg: #0B0F14;
+  --surface: #111827;
+  --surface-raised: #1B2432;
+  --border: #273244;
+  --border-strong: #3B4A61;
+  --text-primary: #F9FAFB;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #64748B;
+  --primary: #2DD4BF;
+  --primary-hover: #5EEAD4;
+  --primary-light: #134E4A;
+  --primary-muted: #0F2E2B;
+  --success-bg: #0C2617;
+  --warning-bg: #2A1F08;
+  --error-bg: #2C1214;
+  --info-bg: #10203A;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow: 0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.45), 0 2px 4px rgba(0,0,0,.4);
+}
+
+[data-theme='dark'] .btn-primary { color: #052E2B; }
+[data-theme='dark'] .notice-info    { color: #93C5FD; border-color: #1E3A8A; }
+[data-theme='dark'] .notice-success { color: #86EFAC; border-color: #14532D; }
+[data-theme='dark'] .notice-warning { color: #FCD34D; border-color: #78350F; }
+[data-theme='dark'] .notice-error   { color: #FCA5A5; border-color: #7F1D1D; }
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: calc(100% - var(--space-4) * 2);
+  margin: 0 var(--space-4) var(--space-2);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.theme-toggle:hover { background: var(--surface-raised); color: var(--text-primary); }
+
+/* ============================================================
+   UPLOAD DROPZONE — patient medical records
+   ============================================================ */
+
+.dropzone {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface-raised);
+  transition: border-color var(--transition), background var(--transition);
+}
+.dropzone:hover, .dropzone:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary-muted);
+  outline: none;
+}
+.dropzone-active {
+  border-color: var(--primary);
+  background: var(--primary-muted);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+.dropzone-busy { opacity: 0.65; cursor: progress; }
+.dropzone-icon { font-size: 1.75rem; margin-bottom: var(--space-1); color: var(--primary); }
+.dropzone-title { font-weight: 600; font-size: 0.9375rem; margin-bottom: 4px; }
+.dropzone-hint { font-size: 0.75rem; color: var(--text-tertiary); }
+
+.upload-message {
+  margin-top: var(--space-2);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+}
+.upload-error   { background: var(--error-bg);   color: var(--error); }
+.upload-success { background: var(--success-bg); color: var(--success); }
+
+/* ── Document list ── */
+.doc-list { display: flex; flex-direction: column; }
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.doc-item:last-child { border-bottom: none; }
+.doc-item-body { flex: 1; min-width: 0; }
+.doc-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc-item-meta { font-size: 0.75rem; color: var(--text-tertiary); }
+
+/* ============================================================
+   AI PRE-CONSULT SUMMARY
+   ============================================================ */
+
+.ai-summary {
+  border: 1px solid var(--primary-light);
+  background: var(--primary-muted);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.ai-summary-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-summary-spark { font-size: 0.875rem; }
+.ai-summary-actions { display: flex; gap: 4px; }
+.ai-summary-body {
+  max-width: var(--reading-width);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+.ai-summary-body p { margin-bottom: var(--space-1); }
+.ai-summary-body p:last-child { margin-bottom: 0; }
+.ai-summary-alert {
+  color: var(--error);
+  font-weight: 600;
+  background: var(--error-bg);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+.ai-summary-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--primary-light);
+}
+.ai-summary-sources { font-size: 0.6875rem; color: var(--text-tertiary); }
+.ai-summary-fallback {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding: var(--space-2);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+.ai-summary-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+/* ── Allergy banner ── */
+.allergy-banner {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+
+.skeleton-group { display: flex; flex-direction: column; gap: 10px; }
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-raised) 25%, var(--border) 50%, var(--surface-raised) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+.skeleton-line { height: 12px; }
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* ============================================================
+   MEDICINE AUTOCOMPLETE
+   ============================================================ */
+
+.autocomplete { position: relative; }
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+}
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.autocomplete-item.highlighted { background: var(--primary-muted); }
+.autocomplete-item-body { flex: 1; min-width: 0; }
+.autocomplete-item-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.autocomplete-item-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.autocomplete-item-category { font-size: 0.6875rem; color: var(--text-tertiary); }
+.medicine-image { flex-shrink: 0; border-radius: 9px; }
+.schedule-badge { font-size: 0.625rem; padding: 1px 6px; }
+.schedule-warning {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Button loading state (spinner) ── */
+.btn.loading { position: relative; color: transparent !important; pointer-events: none; }
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  animation: btn-spin 0.7s linear infinite;
+}
+.btn-primary.loading::after { color: #fff; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+
+/* ── Focus visibility (a11y) ── */
+.btn:focus-visible, .input:focus-visible, .sidebar-link:focus-visible, .dropzone:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

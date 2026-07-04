@@ -92,8 +92,45 @@ async function tryRefresh(): Promise<boolean> {
   return false;
 }
 
+/** Multipart upload — lets the browser set the Content-Type boundary. */
+async function uploadRequest<T>(path: string, formData: FormData): Promise<ApiResponse<T>> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { method: 'POST', body: formData, headers });
+  } catch {
+    return { data: null, error: 'Cannot reach server. Is the backend running?', status: 0 };
+  }
+
+  let json: any;
+  try { json = await res.json(); } catch { json = {}; }
+  if (!res.ok) {
+    return { data: null, error: json?.error?.message || json.message || `HTTP ${res.status}`, status: res.status };
+  }
+  return { data: json as T, error: null, status: res.status };
+}
+
+/** Authenticated binary fetch — returns an object URL for previews/downloads. */
+export async function fetchFileUrl(path: string): Promise<{ url: string | null; error: string | null }> {
+  const token = getAccessToken();
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return { url: null, error: `Could not load file (HTTP ${res.status})` };
+    const blob = await res.blob();
+    return { url: URL.createObjectURL(blob), error: null };
+  } catch {
+    return { url: null, error: 'Cannot reach server.' };
+  }
+}
+
 export const api = {
   get:    <T>(path: string)                        => request<T>(path, { method: 'GET' }),
+  upload: <T>(path: string, formData: FormData)    => uploadRequest<T>(path, formData),
   post:   <T>(path: string, body: unknown)         => request<T>(path, { method: 'POST',  body: JSON.stringify(body) }),
   put:    <T>(path: string, body: unknown)         => request<T>(path, { method: 'PUT',   body: JSON.stringify(body) }),
   patch:  <T>(path: string, body: unknown)         => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -183,6 +220,62 @@ export const consultationsApi = {
   getById: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/consultations/${id}`),
   start: (id: string, body?: { meetLink?: string }) => api.post<{ success: boolean; message: string }>(`/consultations/${id}/start`, body || {}),
   complete: (id: string) => api.post<{ success: boolean; message: string; code?: string }>(`/consultations/${id}/complete`, {}),
+
+  // AI pre-consult summary
+  getSummary: (id: string, refresh = false) =>
+    api.get<{ success: boolean; data: AiSummary }>(`/consultations/${id}/summary${refresh ? '?refresh=1' : ''}`),
+  saveSummaryEdit: (id: string, summary: string) =>
+    api.put<{ success: boolean; message: string }>(`/consultations/${id}/summary`, { summary }),
+};
+
+export interface AiSummary {
+  status: 'ready' | 'fallback' | 'insufficient';
+  summary: string | null;
+  editedSummary: string | null;
+  sources: string[];
+  generatedAt: string | null;
+}
+
+// ── Documents API ─────────────────────────────────────────────────────────────
+export interface PatientDocument {
+  id: string;
+  appointmentId: string | null;
+  originalName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+}
+
+export const documentsApi = {
+  upload: (files: File[], appointmentId?: string) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f));
+    if (appointmentId) form.append('appointmentId', appointmentId);
+    return api.upload<{ success: boolean; data: PatientDocument[] }>('/documents', form);
+  },
+  listMine: () => api.get<{ success: boolean; data: PatientDocument[] }>('/documents/mine'),
+  listForPatient: (patientId: string) =>
+    api.get<{ success: boolean; data: PatientDocument[] }>(`/documents/patient/${patientId}`),
+  remove: (id: string) => api.delete<{ success: boolean; message: string }>(`/documents/${id}`),
+  /** Returns an object URL (Bearer-authenticated) for viewing/downloading. */
+  getFileUrl: (id: string, inline = false) => fetchFileUrl(`/documents/${id}/download${inline ? '?inline=1' : ''}`),
+};
+
+// ── Medicines API (prescription autocomplete) ─────────────────────────────────
+export interface MedicineSuggestion {
+  id: string;
+  name: string;
+  generic: string;
+  form: string;
+  strengths: string[];
+  category: string;
+  schedule: 'H' | 'H1' | 'X' | null;
+  matchOn: 'name' | 'generic';
+}
+
+export const medicinesApi = {
+  search: (q: string) =>
+    api.get<{ success: boolean; data: MedicineSuggestion[] }>(`/medicines/search?q=${encodeURIComponent(q)}`),
 };
 
 // ── Prescriptions API ─────────────────────────────────────────────────────────

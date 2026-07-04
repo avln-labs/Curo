@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { consultationsApi, prescriptionsApi } from '../../../shared/api';
+import { consultationsApi, prescriptionsApi, type MedicineSuggestion } from '../../../shared/api';
+import { PreConsultSummary } from './PreConsultSummary';
+import { PatientDocuments } from './PatientDocuments';
+import { MedicineAutocomplete } from './MedicineAutocomplete';
 
 interface PatientAppt {
   id: string;
@@ -8,9 +11,11 @@ interface PatientAppt {
   status: string;
   slot_time: string;
   chief_complaint: string;
+  patient_id?: string;
   patient_name: string;
   date_of_birth: string;
   gender: string;
+  allergies?: string[];
   consultation_type: string;
   meet_link?: string;
   prescription_id?: string;
@@ -268,11 +273,30 @@ export function ConsultationDashboard() {
                 )}
 
                 <div style={{ marginTop: 24 }}>
+                  <PreConsultSummary appointmentId={activeAppt.id} />
+                </div>
+
+                <div style={{ marginTop: 24 }}>
                   <h3 style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 12 }}>Chief Complaint</h3>
                   <div style={{ padding: 16, background: 'var(--surface-raised)', borderRadius: 'var(--radius)' }}>
                     {activeAppt.chief_complaint}
                   </div>
                 </div>
+
+                {(activeAppt.allergies?.length ?? 0) > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <div className="allergy-banner" role="alert">
+                      ⚠ Allergies: {activeAppt.allergies!.join(', ')}
+                    </div>
+                  </div>
+                )}
+
+                {activeAppt.patient_id && (
+                  <div style={{ marginTop: 24 }}>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 12 }}>Uploaded Records</h3>
+                    <PatientDocuments patientId={activeAppt.patient_id} />
+                  </div>
+                )}
               </div>
 
               {/* Right Panel: Prescription Builder */}
@@ -292,7 +316,19 @@ export function ConsultationDashboard() {
                     <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Medications</label>
                     {medications.map((m, i) => (
                       <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: 8, background: 'var(--background)' }}>
-                        <input className="input" placeholder="Drug Name" value={m.drugName} onChange={e => { const nm = [...medications]; nm[i].drugName = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} style={{ gridColumn: '1 / -1' }} />
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <MedicineAutocomplete
+                            value={m.drugName}
+                            disabled={!!activeAppt.prescription_id}
+                            onChange={(v) => { const nm = [...medications]; nm[i].drugName = v; setMedications(nm); }}
+                            onSelect={(med: MedicineSuggestion) => {
+                              const nm = [...medications];
+                              nm[i].drugName = med.name;
+                              if (!nm[i].dose && med.strengths.length > 0) nm[i].dose = med.strengths[0];
+                              setMedications(nm);
+                            }}
+                          />
+                        </div>
                         <input className="input" placeholder="Dose (e.g. 500mg)" value={m.dose} onChange={e => { const nm = [...medications]; nm[i].dose = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} />
                         <input className="input" placeholder="Freq (e.g. 1-0-1)" value={m.frequency} onChange={e => { const nm = [...medications]; nm[i].frequency = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} />
                         <input className="input" placeholder="Duration (e.g. 5 days)" value={m.duration} onChange={e => { const nm = [...medications]; nm[i].duration = e.target.value; setMedications(nm); }} disabled={!!activeAppt.prescription_id} style={{ gridColumn: '1 / -1' }} />
