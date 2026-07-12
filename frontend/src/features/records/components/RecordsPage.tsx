@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { patientApi, bookingsApi, api } from '../../../shared/api';
+import { patientApi, bookingsApi, api, documentsApi, type PatientDocument } from '../../../shared/api';
+import { RecordUpload } from './RecordUpload';
+import { FileIcon } from '../../../shared/components/FileIcon';
 
 interface PatientProfile {
   full_name: string;
@@ -54,6 +56,9 @@ export function RecordsPage() {
   const [loading, setLoading]   = useState(isPatient);
   const [tab, setTab]           = useState<'overview' | 'prescriptions' | 'reports'>('overview');
 
+  const [docs, setDocs] = useState<PatientDocument[]>([]);
+  const [docBusyId, setDocBusyId] = useState('');
+
   const [rescheduleAppt, setRescheduleAppt] = useState<any>(null);
   const [rescheduleDate, setRescheduleDate] = useState(new Date().toISOString().split('T')[0]);
   const [rescheduleTime, setRescheduleTime] = useState('');
@@ -86,6 +91,11 @@ export function RecordsPage() {
     setLoading(false);
   };
 
+  const loadDocs = async () => {
+    const res = await documentsApi.listMine();
+    if (res.data?.success) setDocs(res.data.data);
+  };
+
   useEffect(() => {
     if (!isPatient) return;
     async function load() {
@@ -95,11 +105,34 @@ export function RecordsPage() {
       ]);
       if (profileRes.data?.success) setProfile(profileRes.data.data as unknown as PatientProfile);
       if (threadRes.data?.success) setThread(threadRes.data.data as unknown as HealthThread);
+      loadDocs();
 
       setLoading(false);
     }
     load();
   }, [isPatient]);
+
+  const handleViewDoc = async (doc: PatientDocument, download = false) => {
+    setDocBusyId(doc.id);
+    const { url, error } = await documentsApi.getFileUrl(doc.id, !download);
+    setDocBusyId('');
+    if (!url) return alert(error || 'Could not load file.');
+    if (download) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.originalName;
+      a.click();
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleDeleteDoc = async (doc: PatientDocument) => {
+    if (!window.confirm(`Delete "${doc.originalName}"? Doctors will no longer see it.`)) return;
+    const res = await documentsApi.remove(doc.id);
+    if (res.data?.success) loadDocs();
+    else alert(res.error || 'Failed to delete.');
+  };
 
   const handleCancel = async (id: string) => {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
@@ -147,7 +180,6 @@ export function RecordsPage() {
   // ── Patient view ──────────────────────────────────────────────────────────────
   const appointments = thread?.appointments || [];
   const prescriptions = thread?.prescriptions || [];
-  const documents = thread?.documents || [];
 
   const startingSoonAppts = appointments.filter(a => a.status === 'confirmed' && canJoinConsultation(a.slot_date, a.slot_time));
 
@@ -342,40 +374,62 @@ export function RecordsPage() {
         )
       )}
 
-      {/* Reports tab */}
+      {/* Reports tab — upload + manage previous medical records */}
       {tab === 'reports' && (
-        documents.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '40px 32px' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🔬</div>
-            <p className="text-muted text-sm">No uploaded reports yet.</p>
-          </div>
-        ) : (
-          <div className="card">
+        <>
+          <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-header">
-              <h2 className="card-title">Uploaded reports</h2>
+              <h2 className="card-title">Add medical records</h2>
             </div>
-            <table className="data-table">
-              <thead>
-                <tr><th>Report</th><th>Date</th><th>Size</th><th></th></tr>
-              </thead>
-              <tbody>
-                {documents.map((d) => (
-                  <tr key={d.id}>
-                    <td className="text-sm font-medium">{d.original_name}</td>
-                    <td className="text-sm">{new Date(d.uploaded_at).toLocaleDateString('en-IN')}</td>
-                    <td className="text-xs text-muted">{Math.round(d.file_size_bytes / 1024)} KB</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn btn-ghost btn-sm">View</button>
-                        <button className="btn btn-ghost btn-sm">Download</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p className="text-muted text-sm" style={{ marginBottom: 16 }}>
+              Upload previous reports, scans, or referral letters. Your doctor sees them
+              automatically before every consultation.
+            </p>
+            <RecordUpload onUploaded={loadDocs} />
           </div>
-        )
+
+          {docs.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '40px 32px' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>🔬</div>
+              <p className="text-muted text-sm">No uploaded reports yet. Add your first record above.</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Uploaded reports</h2>
+                <span className="badge badge-neutral">{docs.length}</span>
+              </div>
+              <ul className="doc-list">
+                {docs.map((d) => (
+                  <li key={d.id} className="doc-item">
+                    <FileIcon mimeType={d.mimeType} name={d.originalName} />
+                    <div className="doc-item-body">
+                      <div className="doc-item-name" title={d.originalName}>{d.originalName}</div>
+                      <div className="doc-item-meta">
+                        {new Date(d.uploadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {' · '}
+                        {d.fileSizeBytes >= 1024 * 1024
+                          ? `${(d.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
+                          : `${Math.max(1, Math.round(d.fileSizeBytes / 1024))} KB`}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button
+                        className={`btn btn-ghost btn-sm${docBusyId === d.id ? ' loading' : ''}`}
+                        onClick={() => handleViewDoc(d)}
+                        disabled={docBusyId === d.id}
+                      >
+                        View
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleViewDoc(d, true)}>Download</button>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => handleDeleteDoc(d)}>Delete</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       {/* Reschedule Modal */}

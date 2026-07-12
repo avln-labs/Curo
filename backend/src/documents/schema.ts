@@ -1,3 +1,5 @@
 import { z } from 'zod';
 
-export const placeholderSchema = z.object({});
+export const uploadMetaSchema = z.object({
+  appointmentId: z.string().uuid().optional(),
+});

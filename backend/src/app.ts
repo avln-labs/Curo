@@ -13,6 +13,7 @@ import { documentRouter } from './documents/routes';
 import { notificationRouter } from './notifications/routes';
 import { adminRouter } from './admin/routes';
 import { healthThreadsRouter } from './health_threads/routes';
+import { medicineRouter } from './medicines/routes';
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/v1/documents',     documentRouter);
 app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/admin',         adminRouter);
 app.use('/api/v1/health_threads', healthThreadsRouter);
+app.use('/api/v1/medicines',     medicineRouter);
 
 // Health check
 app.get('/api/v1/health', (_req, res) => res.json({

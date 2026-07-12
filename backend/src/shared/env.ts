@@ -30,4 +30,14 @@ export const env = {
   TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID ?? '',
   TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN ?? '',
   TWILIO_FROM: process.env.TWILIO_FROM ?? '',
+
+  // Document uploads (local disk for MVP)
+  UPLOAD_DIR: getEnv('UPLOAD_DIR', 'uploads'),
+
+  // AI pre-consult summary — optional. When AI_API_KEY is unset, CURO uses a
+  // deterministic rule-based summary so doctors are never blocked.
+  AI_API_KEY: process.env.AI_API_KEY ?? '',
+  AI_BASE_URL: getEnv('AI_BASE_URL', 'https://api.openai.com/v1'),
+  AI_MODEL: getEnv('AI_MODEL', 'gpt-4o-mini'),
+  AI_TIMEOUT_MS: Number(getEnv('AI_TIMEOUT_MS', '15000')),
 };
