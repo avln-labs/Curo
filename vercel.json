@@ -7,6 +7,10 @@
         "backend": {
             "root": "backend",
             "entrypoint": "src/index.ts"
+        },
+        "doctor-demo": {
+            "root": "demo-doctor-portal",
+            "framework": "vite"
         }
     },
     "rewrites": [
@@ -15,6 +19,13 @@
             "destination": {
                 "type": "service",
                 "service": "backend"
+            }
+        },
+        {
+            "source": "/doctor-demo(/.*)?",
+            "destination": {
+                "type": "service",
+                "service": "doctor-demo"
             }
         },
         {
