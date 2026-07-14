@@ -1,4 +1,3 @@
-﻿export { BookingPage } from './components/BookingPage';
+export { DoctorSearchPage } from './components/DoctorSearchPage';
 export * from './api';
-export * from './hooks/useBookingPage';
 export * from './types';

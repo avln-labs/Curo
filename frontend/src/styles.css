@@ -5,39 +5,46 @@
    ============================================================ */
 
 /* --- Tokens --- */
-:root {
-  /* Typography */
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+:root {  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', 'Copernicus', 'Tiempos Headline', serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.6;
 
-  /* Colors — Light Mode */
-  --bg: #FAFAF9;
-  --surface: #FFFFFF;
-  --surface-raised: #F5F5F4;
-  --border: #E7E5E4;
-  --border-strong: #D6D3D1;
+  /* Colors — Claude Editorial Theme */
+  --bg: #faf9f5;
+  --surface: #ffffff;
+  --surface-raised: #f5f0e8;
+  --surface-card: #efe9de;
+  --border: #e6dfd8;
+  --border-strong: #ebe6df;
 
   /* Text */
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-tertiary: #9CA3AF;
+  --text-primary: #141413;
+  --text-secondary: #3d3d3a;
+  --text-tertiary: #8e8b82;
 
-  /* Brand */
-  --primary: #0F766E;
-  --primary-hover: #0D6D66;
-  --primary-light: #CCFBF1;
-  --primary-muted: #F0FDFA;
+  /* Brand / Primary */
+  --primary: #cc785c;
+  --primary-hover: #a9583e;
+  --primary-light: #e6dfd8;
+  --primary-muted: #f5f0e8;
 
   /* Status */
-  --success: #15803D;
-  --success-bg: #F0FDF4;
-  --warning: #D97706;
-  --warning-bg: #FFFBEB;
-  --error: #DC2626;
-  --error-bg: #FEF2F2;
-  --info: #2563EB;
-  --info-bg: #EFF6FF;
+  --success: #5db872;
+  --success-bg: #eaf5ec;
+  --warning: #d4a017;
+  --warning-bg: #fdf5e8;
+  --error: #c64545;
+  --error-bg: #faeaea;
+  --info: #5db8a6;
+  --info-bg: #edf7f5;
+
+  /* High Contrast Surfaces */
+  --surface-dark: #181715;
+  --surface-dark-elevated: #252320;
+  --on-dark: #faf9f5;
 
   /* Spacing (8px scale) */
   --space-1: 8px;
@@ -1558,4 +1565,303 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn:focus-visible, .input:focus-visible, .sidebar-link:focus-visible, .dropzone:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* ──────── Autocomplete ──────── */
+.autocomplete {
+  position: relative;
+  width: 100%;
+}
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  list-style: none;
+  padding: 0;
+}
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+.autocomplete-item.highlighted,
+.autocomplete-item:hover {
+  background: var(--surface-raised);
+}
+.autocomplete-item-body {
+  display: flex;
+  flex-direction: column;
+}
+.autocomplete-item-name {
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.autocomplete-item-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.autocomplete-item-category {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+.schedule-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+}
+.ai-summary-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--primary-light);
+}
+.ai-summary-sources { font-size: 0.6875rem; color: var(--text-tertiary); }
+.ai-summary-fallback {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding: var(--space-2);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+.ai-summary-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+/* ── Allergy banner ── */
+.allergy-banner {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+
+.skeleton-group { display: flex; flex-direction: column; gap: 10px; }
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-raised) 25%, var(--border) 50%, var(--surface-raised) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+.skeleton-line { height: 12px; }
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* ============================================================
+   MEDICINE AUTOCOMPLETE
+   ============================================================ */
+
+.autocomplete { position: relative; }
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+}
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.autocomplete-item.highlighted { background: var(--primary-muted); }
+.autocomplete-item-body { flex: 1; min-width: 0; }
+.autocomplete-item-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.autocomplete-item-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.autocomplete-item-category { font-size: 0.6875rem; color: var(--text-tertiary); }
+.medicine-image { flex-shrink: 0; border-radius: 9px; }
+.schedule-badge { font-size: 0.625rem; padding: 1px 6px; }
+.schedule-warning {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Button loading state (spinner) ── */
+.btn.loading { position: relative; color: transparent !important; pointer-events: none; }
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  animation: btn-spin 0.7s linear infinite;
+}
+.btn-primary.loading::after { color: #fff; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+
+/* ── Focus visibility (a11y) ── */
+.btn:focus-visible, .input:focus-visible, .sidebar-link:focus-visible, .dropzone:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ──────── Autocomplete ──────── */
+.autocomplete {
+  position: relative;
+  width: 100%;
+}
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  list-style: none;
+  padding: 0;
+}
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+.autocomplete-item.highlighted,
+.autocomplete-item:hover {
+  background: var(--surface-raised);
+}
+.autocomplete-item-body {
+  display: flex;
+  flex-direction: column;
+}
+.autocomplete-item-name {
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.autocomplete-item-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.autocomplete-item-category {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+.schedule-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+}
+.schedule-warning {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--error);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ──────── AI Summary ──────── */
+/* ✦ AI Summary ✦ */
+.ai-summary-heading {
+  margin: 32px 0 16px 0;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.ai-heading-facts {
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+}
+.ai-heading-implications {
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary-light);
+  padding-bottom: 8px;
+}
+.ai-summary-list {
+  margin: 0 0 24px 20px;
+  padding: 0;
+  list-style: disc;
+}
+.ai-summary-list li {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 1.05rem;
+}
+.ai-summary-list li strong {
+  color: var(--text-primary);
+  font-weight: 600;
 }

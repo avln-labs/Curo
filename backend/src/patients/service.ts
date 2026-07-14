@@ -76,7 +76,19 @@ export const PatientService = {
       `SELECT
          px.id, px.serial_number, px.diagnosis, px.created_at,
          px.followup_date, px.verify_token,
-         d.full_name as doctor_name
+         d.full_name as doctor_name,
+         COALESCE(
+           (SELECT json_agg(
+              json_build_object(
+                'drugName', pm.drug_name,
+                'dose', pm.dose,
+                'frequency', pm.frequency,
+                'duration', pm.duration
+              )
+            )
+            FROM prescription_medications pm
+            WHERE pm.prescription_id = px.id), '[]'::json
+         ) as medications
        FROM prescriptions px
        JOIN doctors d ON d.id = px.doctor_id
        WHERE px.patient_id = $1

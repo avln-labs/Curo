@@ -267,5 +267,26 @@ export const PrescriptionsService = {
       [appointmentId]
     );
     return rx ? this.getById(rx.id) : null;
+  },
+
+  /** Get all prescriptions for a doctor */
+  async getByDoctorId(doctorId: string) {
+    const { rows } = await db.query<{
+      id: string;
+      serial_number: string;
+      diagnosis: string | null;
+      created_at: string;
+      patient_name: string;
+      slot_date: string;
+    }>(
+      `SELECT pr.id, pr.serial_number, pr.diagnosis, pr.created_at, p.full_name as patient_name, a.slot_date
+       FROM prescriptions pr
+       JOIN patients p ON p.id = pr.patient_id
+       JOIN appointments a ON a.id = pr.appointment_id
+       WHERE pr.doctor_id = $1
+       ORDER BY pr.created_at DESC`,
+      [doctorId]
+    );
+    return rows;
   }
 };

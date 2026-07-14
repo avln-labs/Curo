@@ -180,6 +180,9 @@ export const doctorApi = {
   unblockDates: (body: { dates: string[] }) => api.delete<{ success: boolean }>('/doctors/blocked-dates'),
   updateUpi:    (body: { upiId?: string; upiQrUrl?: string }) => api.put<{ success: boolean; message: string }>('/doctors/upi', body),
 
+  // Search
+  search: (query?: string) => api.get<{ success: boolean; data: any[] }>(`/doctors/search${query ? `?q=${encodeURIComponent(query)}` : ''}`),
+
   // Onboarding wizard
   saveProfile: (body: unknown) =>
     api.post<{ success: boolean; message: string; doctor?: Record<string, unknown>; bookingUrl?: string }>(
@@ -283,5 +286,6 @@ export const prescriptionsApi = {
   create: (body: unknown) => api.post<{ success: boolean; message: string; prescriptionId: string }>('/prescriptions', body),
   getById: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/prescriptions/${id}`),
   getByAppointmentId: (id: string) => api.get<{ success: boolean; data: Record<string, unknown> }>(`/prescriptions/appointment/${id}`),
+  getMy: () => api.get<{ success: boolean; data: any[] }>('/prescriptions/my'),
   // Note: PDF download is handled via standard <a> link since it returns a file blob
 };

@@ -255,6 +255,13 @@ doctorRouter.delete(
   }
 );
 
+// ─── GET /doctors/search — search all verified doctors (no auth) ──────────────
+
+doctorRouter.get('/search', async (req, res) => {
+  const data = await DoctorService.searchDoctors();
+  return res.json({ success: true, data });
+});
+
 // ─── GET /doctors/:slug/public — public profile (no auth required) ────────────
 
 doctorRouter.get('/:slug/public', async (req, res) => {

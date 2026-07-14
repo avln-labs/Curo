@@ -101,19 +101,7 @@ export function DoctorDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Tabs: 'dashboard' | 'upi' | 'google'
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'upi' | 'google'>('dashboard');
   const [appointmentsTab, setAppointmentsTab] = useState<'upcoming' | 'live' | 'completed'>('upcoming');
-
-  // UPI Settings
-  const [upiId, setUpiId] = useState('');
-  const [upiQrUrl, setUpiQrUrl] = useState('');
-  const [savingUpi, setSavingUpi] = useState(false);
-  const [upiSuccess, setUpiSuccess] = useState('');
-
-  // Google Settings
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -124,59 +112,11 @@ export function DoctorDashboardPage() {
       } else {
         setData(res.data);
       }
-      
-      // Load current UPI info
-      const { data: profRes } = await api.get<{ success: boolean; data: any }>('/doctors/profile');
-      if (profRes?.success) {
-        setUpiId(profRes.data.upi_id || '');
-        setUpiQrUrl(profRes.data.upi_qr_url || '');
-      }
-
-      // Load Google status
-      const { data: gRes } = await api.get<{ success: boolean; connected: boolean }>('/doctors/google/status');
-      if (gRes?.success) {
-        setGoogleConnected(gRes.connected);
-      }
-      
       setLoading(false);
     }
     load();
   }, []);
 
-  const handleSaveUpi = async () => {
-    setSavingUpi(true);
-    setUpiSuccess('');
-    const { data: res, error: err } = await doctorApi.updateUpi({ upiId, upiQrUrl });
-    setSavingUpi(false);
-    if (res?.success) {
-      setUpiSuccess('UPI Details updated successfully.');
-    } else {
-      setError(err || 'Failed to update UPI details.');
-    }
-  };
-
-  const handleConnectGoogle = async () => {
-    setGoogleLoading(true);
-    const { data: res, error: err } = await api.get<{ success: boolean; url: string }>('/doctors/google/auth');
-    setGoogleLoading(false);
-    if (res?.success && res.url) {
-      window.location.href = res.url;
-    } else {
-      setError(err || 'Failed to initiate Google OAuth flow.');
-    }
-  };
-
-  const handleDisconnectGoogle = async () => {
-    setGoogleLoading(true);
-    const { data: res, error: err } = await api.delete<{ success: boolean }>('/doctors/google/disconnect');
-    setGoogleLoading(false);
-    if (res?.success) {
-      setGoogleConnected(false);
-      alert('Google Calendar disconnected successfully.');
-    } else {
-      setError(err || 'Failed to disconnect Google Calendar.');
-    }
-  };
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -227,29 +167,7 @@ export function DoctorDashboardPage() {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
-        <button 
-          className={`btn ${activeTab === 'dashboard' ? 'btn-primary' : 'btn-ghost'}`} 
-          onClick={() => setActiveTab('dashboard')}
-        >
-          Appointments
-        </button>
-        <button 
-          className={`btn ${activeTab === 'upi' ? 'btn-primary' : 'btn-ghost'}`} 
-          onClick={() => setActiveTab('upi')}
-        >
-          UPI Settings
-        </button>
-        <button 
-          className={`btn ${activeTab === 'google' ? 'btn-primary' : 'btn-ghost'}`} 
-          onClick={() => setActiveTab('google')}
-        >
-          Google Calendar
-        </button>
-      </div>
 
-      {activeTab === 'dashboard' && (
-        <>
           <div className="stats-strip" style={{ marginBottom: 32 }}>
             <div className="stat-item">
               <div className="stat-value">{stats.totalAppointments}</div>
@@ -300,11 +218,8 @@ export function DoctorDashboardPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                       <span className="appt-time" style={{ fontWeight: 600 }}>{formatTime(a.slot_time)}</span>
                       <span className={`badge ${statusClass(a.status)}`}>{statusLabel(a.status)}</span>
-                      {a.meet_link && canJoinConsultation(a.slot_date, a.slot_time) && (
-                        <a href={a.meet_link} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">Join Consultation</a>
-                      )}
                       {a.status !== 'completed' && (
-                        <button className="btn btn-primary btn-sm" onClick={() => navigate('/consultations')}>Open Workspace</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => navigate('/consultations')}>Start Consultation</button>
                       )}
                     </div>
                   </div>
@@ -312,82 +227,6 @@ export function DoctorDashboardPage() {
               </div>
             )}
           </div>
-        </>
-      )}
-
-      {activeTab === 'upi' && (
-        <div className="card" style={{ maxWidth: 600 }}>
-          <div className="card-header">
-            <h2 className="card-title">UPI Payment Setup</h2>
-            <p className="text-muted text-sm">Patients will see these details during the booking process to make payments.</p>
-          </div>
-          <div style={{ padding: 24 }}>
-            {upiSuccess && <div style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: 12, borderRadius: 8, marginBottom: 16 }}>{upiSuccess}</div>}
-            <div className="form-group">
-              <label className="form-label">UPI ID / VPA</label>
-              <input type="text" className="input" placeholder="e.g. yourname@okicici" value={upiId} onChange={e => setUpiId(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">UPI QR Code Image</label>
-              <input type="file" accept="image/*" className="input" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  if (file.size > 2 * 1024 * 1024) {
-                    alert('File size must be less than 2MB');
-                    return;
-                  }
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setUpiQrUrl(reader.result as string);
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }} />
-              <div className="form-hint">Upload your QR code image (max 2MB). It will be saved securely.</div>
-            </div>
-            {upiQrUrl && (
-              <div style={{ marginTop: 16, border: '1px solid var(--border)', padding: 16, borderRadius: 8, display: 'inline-block' }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>QR Preview:</div>
-                <img src={upiQrUrl} alt="UPI QR Preview" style={{ width: 150, height: 150, objectFit: 'contain' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
-              </div>
-            )}
-            <div style={{ marginTop: 24 }}>
-              <button className={`btn btn-primary ${savingUpi ? 'loading' : ''}`} onClick={handleSaveUpi} disabled={savingUpi}>Save UPI Details</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'google' && (
-        <div className="card" style={{ maxWidth: 600 }}>
-          <div className="card-header">
-            <h2 className="card-title">Google Calendar Integration</h2>
-            <p className="text-muted text-sm">Connect your Google account to automatically create calendar events and generate Google Meet links for online consultations.</p>
-          </div>
-          <div style={{ padding: 24 }}>
-            {new URLSearchParams(window.location.search).get('google') === 'success' && (
-              <div style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: 12, borderRadius: 8, marginBottom: 16 }}>Google Calendar connected successfully!</div>
-            )}
-            {new URLSearchParams(window.location.search).get('google') === 'failed' && (
-              <div style={{ background: 'var(--error-bg)', color: 'var(--error)', padding: 12, borderRadius: 8, marginBottom: 16 }}>Failed to connect Google Calendar. Please try again.</div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-raised)' }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 4 }}>Google Account</div>
-                <div style={{ fontSize: '0.85rem', color: googleConnected ? 'var(--success)' : 'var(--text-secondary)' }}>
-                  {googleConnected ? '✓ Connected to Google Calendar' : 'Not connected'}
-                </div>
-              </div>
-              {googleConnected ? (
-                <button className={`btn btn-secondary btn-sm ${googleLoading ? 'loading' : ''}`} onClick={handleDisconnectGoogle} disabled={googleLoading}>Disconnect</button>
-              ) : (
-                <button className={`btn btn-primary btn-sm ${googleLoading ? 'loading' : ''}`} onClick={handleConnectGoogle} disabled={googleLoading}>Connect Google Account</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

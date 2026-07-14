@@ -591,5 +591,28 @@ export const DoctorService = {
 
     return { slots, blocked: false, slotDuration };
   },
+
+  /**
+   * Search all active, verified doctors
+   */
+  async searchDoctors() {
+    const { rows } = await db.query(`
+      SELECT
+        d.id,
+        d.slug,
+        d.full_name,
+        d.qualifications,
+        d.specialisations,
+        d.city,
+        d.clinic_name,
+        COALESCE(
+          (SELECT fee FROM consultation_types ct WHERE ct.doctor_id = d.id AND ct.is_active = true ORDER BY fee ASC LIMIT 1),
+          '600'
+        ) as starting_fee
+      FROM doctors d
+      WHERE d.is_active = true AND d.verification_status = 'verified'
+    `);
+    return rows;
+  },
 };
 

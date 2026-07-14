@@ -178,16 +178,20 @@ function clampWords(s: string, maxWords: number): string {
   return words.length <= maxWords ? s : `${words.slice(0, maxWords).join(' ')}…`;
 }
 
-// ─── LLM summary (optional, OpenAI-compatible) ───────────────────────────────
+// ─── LLM summary (Gemini) ──────────────────────────────────────────────────
 
 async function buildLlmSummary(ctx: PatientContext): Promise<string | null> {
-  if (!env.AI_API_KEY) return null;
+  if (!env.GEMINI_API_KEY) return null;
 
   const prompt = [
     'You are a clinical assistant preparing a pre-consultation briefing for a doctor.',
     'Write a factual summary of the patient context below in AT MOST 150 words.',
-    'Structure: 1) presenting complaint, 2) relevant history, 3) current/recent medications, 4) allergy alerts.',
-    'Only state facts present in the data. Do not diagnose, speculate, or recommend treatment.',
+    'STRICT INSTRUCTIONS:',
+    '- Distinguish between "Known Facts" (explicitly present in data) and "Possible Implications" (inferred/drawn conclusions).',
+    '- Format exactly as two markdown headers: "### Known Facts" and "### Possible Implications".',
+    '- Under each header, use bullet points (starting with "- ").',
+    '- Never make assumptions without placing them in the Possible Implications section.',
+    '- For Known Facts, structure as: Presenting Complaint, Relevant History, Current Medications, Allergy Alerts.',
     '',
     `PATIENT: ${JSON.stringify(ctx.patient)}`,
     `CURRENT BOOKING: ${JSON.stringify(ctx.appointment)}`,
@@ -200,29 +204,33 @@ async function buildLlmSummary(ctx: PatientContext): Promise<string | null> {
   const timer = setTimeout(() => controller.abort(), env.AI_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${env.AI_BASE_URL}/chat/completions`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.AI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: env.AI_MODEL,
-        temperature: 0.2,
-        max_tokens: 400,
-        messages: [{ role: 'user', content: prompt }],
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 400,
+        }
       }),
     });
     if (!res.ok) {
-      console.error(`[ai-summary] LLM responded ${res.status}`);
+      console.error(`[ai-summary] Gemini responded ${res.status}`);
       return null;
     }
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const text = json.choices?.[0]?.message?.content?.trim();
+    const json = await res.json() as any;
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     return text ? clampWords(text, 200) : null;
   } catch (e) {
-    console.error('[ai-summary] LLM call failed:', (e as Error).message);
+    console.error('[ai-summary] Gemini call failed:', (e as Error).message);
     return null;
   } finally {
     clearTimeout(timer);
