@@ -26,10 +26,10 @@
   --text-tertiary: #8e8b82;
 
   /* Brand / Primary */
-  --primary: #cc785c;
-  --primary-hover: #a9583e;
-  --primary-light: #e6dfd8;
-  --primary-muted: #f5f0e8;
+  --primary: #0f766e;
+  --primary-hover: #115e59;
+  --primary-light: #ccfbf1;
+  --primary-muted: #f0fdfa;
 
   /* Status */
   --success: #5db872;
