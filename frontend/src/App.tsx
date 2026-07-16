@@ -71,6 +71,16 @@ function App() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/doctor-onboarding"
+        element={
+          <RequireAuth>
+            <RequireDoctor>
+              <DoctorOnboardingPage />
+            </RequireDoctor>
+          </RequireAuth>
+        }
+      />
 
       {/* Protected: workspace with AppShell sidebar */}
       <Route element={<RequireAuth><AppShell /></RequireAuth>}>
@@ -78,7 +88,6 @@ function App() {
 
         {/* ── Doctor-only routes ───────────────────────────────────── */}
         <Route path="/dashboard"          element={<RequireDoctor><DoctorDashboardPage /></RequireDoctor>} />
-        <Route path="/doctor-onboarding"  element={<RequireDoctor><DoctorOnboardingPage /></RequireDoctor>} />
         <Route path="/doctor-profile"     element={<RequireDoctor><DoctorProfilePage /></RequireDoctor>} />
         <Route path="/consultations"      element={<RequireDoctor><ConsultationDashboard /></RequireDoctor>} />
         <Route path="/health-threads"     element={<RequireDoctor><HealthThreadPage /></RequireDoctor>} />

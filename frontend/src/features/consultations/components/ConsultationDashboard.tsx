@@ -172,24 +172,27 @@ export function ConsultationDashboard() {
         width: sidebarOpen ? (isMobile ? '100%' : '320px') : '0px', 
         minWidth: sidebarOpen ? (isMobile ? '100%' : '320px') : '0px',
         opacity: sidebarOpen ? 1 : 0,
-        background: 'var(--surface-dark)', 
-        color: 'var(--on-dark)', 
+        background: 'rgba(255, 255, 255, 0.4)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        color: 'var(--text-primary)', 
         display: 'flex', 
         flexDirection: 'column', 
-        borderRight: sidebarOpen ? '1px solid var(--surface-dark-elevated)' : 'none', 
+        borderRight: sidebarOpen ? '1px solid rgba(255, 255, 255, 0.6)' : 'none', 
+        boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.02)' : 'none',
         overflowY: 'auto',
         overflowX: 'hidden',
-        transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+        transition: 'opacity 0.3s ease',
         zIndex: 10
       }}>
-        <div style={{ padding: '32px 24px 24px', borderBottom: '1px solid var(--surface-dark-elevated)', minWidth: 320 }}>
+        <div style={{ padding: '32px 24px 24px', borderBottom: '1px solid rgba(255,255,255,0.4)', minWidth: 320 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: 'var(--surface-card)', margin: 0 }}>CURO</h1>
+            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: 'var(--text-primary)', margin: 0 }}>CURO</h1>
             {isMobile && (
-              <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+              <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
             )}
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>Consultation Workspace</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Consultation Workspace</div>
         </div>
 
         <div style={{ padding: 24, flex: 1, display: 'flex', flexDirection: 'column', gap: 24, minWidth: 320 }}>
@@ -207,7 +210,7 @@ export function ConsultationDashboard() {
           <div>
             <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#a09d96', marginBottom: 12 }}>Upcoming Today</h3>
             {upcoming.length === 0 ? (
-              <div style={{ color: '#a09d96', fontSize: '0.9rem' }}>No more appointments today.</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No more appointments today.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {upcoming.map(a => (
@@ -216,17 +219,18 @@ export function ConsultationDashboard() {
                        style={{ 
                          padding: 16, 
                          borderRadius: 'var(--radius)', 
-                         background: activeAppt?.id === a.id ? 'var(--surface-dark-elevated)' : 'transparent',
+                         background: activeAppt?.id === a.id ? 'rgba(255,255,255,0.7)' : 'transparent',
                          border: '1px solid',
-                         borderColor: activeAppt?.id === a.id ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                         borderColor: activeAppt?.id === a.id ? 'var(--primary)' : 'rgba(0,0,0,0.05)',
                          cursor: 'pointer',
-                         transition: 'var(--transition)'
+                         transition: 'var(--transition)',
+                         boxShadow: activeAppt?.id === a.id ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
                        }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 600, color: activeAppt?.id === a.id ? 'white' : '#faf9f5' }}>{a.patient_name}</span>
-                      <span style={{ color: activeAppt?.id === a.id ? 'var(--primary)' : '#a09d96', fontSize: '0.85rem' }}>{formatTime12H(a.slot_time)}</span>
+                      <span style={{ fontWeight: 600, color: activeAppt?.id === a.id ? 'var(--text-primary)' : 'var(--text-primary)' }}>{a.patient_name}</span>
+                      <span style={{ color: activeAppt?.id === a.id ? 'var(--primary)' : 'var(--text-secondary)', fontSize: '0.85rem' }}>{formatTime12H(a.slot_time)}</span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#a09d96' }}>{calculateAge(a.date_of_birth)}y, {a.gender}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{calculateAge(a.date_of_birth)}y, {a.gender}</div>
                   </div>
                 ))}
               </div>
@@ -236,7 +240,7 @@ export function ConsultationDashboard() {
       </div>
 
       {/* MAIN CANVAS - EDITORIAL CREAM */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 16px 64px' : '0 5% 64px', transition: 'padding 0.3s ease', display: (isMobile && sidebarOpen) ? 'none' : 'block' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 16px 64px' : '0 5% 64px', display: (isMobile && sidebarOpen) ? 'none' : 'block' }}>
         
         {/* Toggle Sidebar Button for Canvas */}
         <div style={{ paddingTop: 24, display: 'flex', alignItems: 'center' }}>
@@ -309,7 +313,7 @@ export function ConsultationDashboard() {
               </div>
 
               {(activeAppt.allergies?.length ?? 0) > 0 && (
-                <div style={{ marginBottom: 32, padding: '16px 20px', background: 'var(--warning-bg)', borderLeft: '4px solid var(--warning)', borderRadius: '0 var(--radius) var(--radius) 0' }}>
+                <div style={{ marginBottom: 32, padding: '16px 20px', background: 'var(--warning-bg)', border: '1px solid var(--warning)', borderRadius: 'var(--radius)' }}>
                   <strong style={{ color: 'var(--warning)' }}>⚠ Known Allergies:</strong> <span style={{ color: 'var(--text-primary)' }}>{activeAppt.allergies!.join(', ')}</span>
                 </div>
               )}

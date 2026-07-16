@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { AnimatedFAQ } from './components/AnimatedFAQ';
 import './landing.css';
 
 type Role = 'DOCTOR' | 'PATIENT';
@@ -220,17 +221,26 @@ export function LandingPage() {
               autoFocus
             />
             
-            <button 
-              className="auth-btn"
-              onClick={() => { setPhase('auth'); setOtp(''); setError(''); }}
-              disabled={loading}
-              style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-            >
-              Cancel
-            </button>
+            <div style={{ display: 'flex', gap: 16, marginTop: 16, width: '100%' }}>
+              <button 
+                className="auth-btn"
+                onClick={() => { setPhase('auth'); setOtp(''); setError(''); }}
+                disabled={loading}
+                style={{ flex: 1, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="auth-btn primary"
+                onClick={handleVerifyOtp}
+                disabled={loading || otp.replace(/\D/g, '').length < 6}
+                style={{ flex: 1 }}
+              >
+                {loading ? 'Verifying...' : 'Verify OTP'}
+              </button>
+            </div>
           </div>
         )}
-
         {phase === 'success' && (
           <div className="auth-box" style={{ textAlign: 'center' }}>
             <div className="success-message">{successMsg}</div>
@@ -241,6 +251,9 @@ export function LandingPage() {
           </div>
         )}
       </section>
+
+      {/* Render AnimatedFAQ below the Hero section */}
+      {phase === 'role' && <AnimatedFAQ />}
     </div>
   );
 }

@@ -299,7 +299,7 @@ export const AuthService = {
       userPayload.verificationStatus = doctorProfile.verification_status;
       userPayload.bookingLinkActive = doctorProfile.booking_link_active;
       userPayload.onboardingStep = doctorProfile.onboarding_step;
-      userPayload.needsOnboarding = doctorProfile.onboarding_step < 4;
+      userPayload.needsOnboarding = doctorProfile.onboarding_step < 5;
     }
 
     if (patientProfile) {
@@ -422,7 +422,7 @@ export const AuthService = {
           payload.verificationStatus = doc.verification_status;
           payload.bookingLinkActive = doc.booking_link_active;
           payload.onboardingStep = doc.onboarding_step;
-          payload.needsOnboarding = doc.onboarding_step < 4;
+          payload.needsOnboarding = doc.onboarding_step < 5;
         }
       } else if (user.role === 'PATIENT') {
         const pat = await db.queryOne<PatientRow>(
@@ -462,7 +462,7 @@ export const AuthService = {
         payload.verificationStatus = doc.verification_status;
         payload.bookingLinkActive = doc.booking_link_active;
         payload.onboardingStep = doc.onboarding_step;
-        payload.needsOnboarding = doc.onboarding_step < 4;
+        payload.needsOnboarding = doc.onboarding_step < 5;
       }
 
       const pat = memPatients.get(memUser.id);

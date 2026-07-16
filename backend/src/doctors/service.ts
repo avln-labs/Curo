@@ -174,6 +174,10 @@ export const DoctorService = {
         onboarding_step = GREATEST(onboarding_step, 1),
         verification_status = 'verified',
         signature_url = COALESCE($5, signature_url),
+        bio = COALESCE($6, bio),
+        qualifications = COALESCE($7, qualifications),
+        languages = COALESCE($8, languages),
+        experience_years = COALESCE($9, experience_years),
         updated_at = NOW()
        WHERE id = $4`,
       [
@@ -182,6 +186,10 @@ export const DoctorService = {
         data.specialisations,
         doctorId,
         data.signatureBase64 || null,
+        data.bio || null,
+        data.qualifications || null,
+        data.languages || null,
+        data.experienceYears || null
       ]
     );
 
@@ -439,7 +447,8 @@ export const DoctorService = {
   async getPublicProfile(slug: string) {
     const doctor = await db.queryOne<DoctorRow>(
       `SELECT id, slug, full_name, qualifications, specialisations, city, bio,
-              languages, average_rating, review_count, verification_status, booking_link_active
+              languages, average_rating, review_count, verification_status, booking_link_active,
+              experience_years, clinic_name
        FROM doctors WHERE slug = $1 AND is_active = true`,
       [slug]
     );

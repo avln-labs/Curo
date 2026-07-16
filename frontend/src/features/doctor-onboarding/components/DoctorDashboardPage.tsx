@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { api, doctorApi } from '../../../shared/api';
 import { QRCodeSVG } from 'qrcode.react';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,6 +119,28 @@ export function DoctorDashboardPage() {
     load();
   }, []);
 
+  const tourInitialized = useRef(false);
+
+  useEffect(() => {
+    const tourKey = `dashboardTourDone_${(user as any)?.id || 'anon'}`;
+    if (data && !loading && !localStorage.getItem(tourKey) && !tourInitialized.current) {
+      tourInitialized.current = true;
+      const tour = driver({
+        showProgress: true,
+        steps: [
+          { element: '.tour-greeting', popover: { title: 'Welcome to Curo', description: 'This is your mission control. From here, you can manage appointments, patients, and your schedule.', side: "bottom", align: 'start' } },
+          { element: '.tour-booking-link', popover: { title: 'Your Booking Link', description: 'Share this link with your patients to let them book appointments directly.', side: "left", align: 'start' } },
+          { element: '.tour-stats', popover: { title: 'Daily Overview', description: 'Quickly see how many patients you are seeing today and your revenue.', side: "bottom", align: 'start' } },
+          { element: '.tour-tabs', popover: { title: 'Appointment Queue', description: 'Switch between upcoming, live, and completed appointments.', side: "top", align: 'start' } }
+        ],
+        onDestroyed: () => {
+          localStorage.setItem(`dashboardTourDone_${(user as any)?.id || 'anon'}`, 'true');
+        }
+      });
+      setTimeout(() => tour.drive(), 500);
+    }
+  }, [data, loading]);
+
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -138,7 +162,7 @@ export function DoctorDashboardPage() {
 
   return (
     <main className="page" style={{ maxWidth: 1000 }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-header tour-greeting" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="page-title">{greeting}, {doctorName} 👋</h1>
           <p className="page-subtitle">
@@ -150,7 +174,7 @@ export function DoctorDashboardPage() {
         </div>
         
         {bookingUrl && (
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div className="tour-booking-link" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Your Public Booking Link:</div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -168,7 +192,7 @@ export function DoctorDashboardPage() {
       </div>
 
 
-          <div className="stats-strip" style={{ marginBottom: 32 }}>
+          <div className="stats-strip tour-stats" style={{ marginBottom: 32 }}>
             <div className="stat-item">
               <div className="stat-value">{stats.totalAppointments}</div>
               <div className="stat-label">Appointments today</div>
@@ -187,7 +211,7 @@ export function DoctorDashboardPage() {
             </div>
           </div>
 
-          <div className="card">
+          <div className="card tour-tabs">
             <div className="card-header" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               <button className={`btn btn-sm ${appointmentsTab === 'upcoming' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setAppointmentsTab('upcoming')}>
                 Upcoming ({upcomingAppts.length})

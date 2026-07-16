@@ -1865,3 +1865,67 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   color: var(--text-primary);
   font-weight: 600;
 }
+
+/* ──────── Driver.js Custom Theme ──────── */
+.driver-popover {
+  border-radius: var(--radius-lg) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+  font-family: var(--font-sans) !important;
+  color: var(--text-primary) !important;
+  padding: 24px !important;
+}
+.driver-popover-title {
+  font-weight: 600 !important;
+  font-size: 1.15rem !important;
+  margin-bottom: 8px !important;
+  color: var(--text-primary) !important;
+}
+.driver-popover-description {
+  color: var(--text-secondary) !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+  margin-bottom: 24px !important;
+}
+.driver-popover-footer {
+  margin-top: 16px !important;
+}
+.driver-popover-footer button {
+  border-radius: var(--radius) !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  text-shadow: none !important;
+  font-size: 0.9rem !important;
+  transition: all 0.2s ease !important;
+}
+.driver-popover-footer .driver-close-btn {
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+}
+.driver-popover-footer .driver-close-btn:hover {
+  background: rgba(0,0,0,0.05) !important;
+}
+.driver-popover-footer .driver-prev-btn {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.driver-popover-footer .driver-prev-btn:hover {
+  background: var(--surface-raised) !important;
+}
+.driver-popover-footer .driver-next-btn {
+  background: var(--primary) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.2) !important;
+}
+.driver-popover-footer .driver-next-btn:hover {
+  background: var(--primary-hover) !important;
+}
+.driver-popover-navigation-btns {
+  gap: 8px !important;
+}

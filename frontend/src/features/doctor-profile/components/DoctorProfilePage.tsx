@@ -5,6 +5,49 @@ import { doctorApi, api } from '../../../shared/api';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
+const PG_DEGREES_MAP: Record<string, string[]> = {
+  'MBBS': ['MD', 'MS', 'DNB', 'DM', 'MCh', 'Fellowship', 'Diploma'],
+  'BDS': ['MDS', 'Fellowship', 'Diploma'],
+  'BAMS': ['MD (Ayurveda)', 'MS (Ayurveda)', 'Diploma'],
+  'BHMS': ['MD (Homeopathy)', 'Diploma']
+};
+
+const ALL_LANGUAGES = ['English', 'Hindi', 'Kannada', 'Tamil', 'Telugu', 'Malayalam', 'Marathi', 'Bengali'];
+
+function MultiSelectDropdown({ options, selected, onChange, placeholder }: { options: string[], selected: string[], onChange: (val: string[]) => void, placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <div 
+        className="input" 
+        style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 40, alignItems: 'center' }}
+        onClick={() => setOpen(!open)}
+      >
+        {selected.length === 0 && <span style={{ color: 'var(--text-tertiary)' }}>{placeholder}</span>}
+        {selected.map(s => (
+          <span key={s} style={{ background: 'var(--primary-muted)', color: 'var(--primary)', padding: '2px 8px', borderRadius: 12, fontSize: '0.85rem' }}>
+            {s} 
+            <span style={{ marginLeft: 6, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onChange(selected.filter(x => x !== s)); }}>×</span>
+          </span>
+        ))}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', zIndex: 10, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+          {options.map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+              <input type="checkbox" checked={selected.includes(opt)} onChange={(e) => {
+                if (e.target.checked) onChange([...selected, opt]);
+                else onChange(selected.filter(x => x !== opt));
+              }} />
+              <span style={{ fontSize: '0.95rem' }}>{opt}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DoctorProfilePage() {
   const { user, mutateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'details' | 'fees' | 'schedule' | 'integrations'>('details');
@@ -20,6 +63,11 @@ export function DoctorProfilePage() {
   const [bookingUrl, setBookingUrl] = useState('');
   const [signatureBase64, setSignatureBase64] = useState<string>('');
   const [hasSignature, setHasSignature] = useState(false);
+  const [experienceYears, setExperienceYears] = useState('');
+  const [ugDegree, setUgDegree] = useState('');
+  const [otherDegrees, setOtherDegrees] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [bio, setBio] = useState('');
 
   // ── Fee Fields ──
   const [onlineFee, setOnlineFee] = useState('');
@@ -61,6 +109,19 @@ export function DoctorProfilePage() {
         if (d.signature_url) setHasSignature(true);
         if (d.upi_id) setUpiId(d.upi_id);
         if (d.upi_qr_url) setUpiQrUrl(d.upi_qr_url);
+        
+        if (d.experience_years) setExperienceYears(String(d.experience_years));
+        if (d.languages?.length) setLanguages(d.languages as string[]);
+        if (d.bio) setBio(d.bio);
+
+        if (d.qualifications?.length > 0) {
+          const quals = d.qualifications as string[];
+          const ugOptions = ['MBBS', 'BDS', 'BAMS', 'BHMS'];
+          const ug = quals.find(q => ugOptions.includes(q)) || quals[0] || '';
+          setUgDegree(ug);
+          const rest = quals.filter(q => q !== ug);
+          setOtherDegrees(rest);
+        }
 
         const consultationTypes = d.consultationTypes as any[] | undefined;
         if (consultationTypes) {
@@ -130,12 +191,21 @@ export function DoctorProfilePage() {
     if (!fullName.trim()) return setError('Full name is required.');
     if (specs.length === 0) return setError('Specialisation is required.');
 
+    let allQuals = [ugDegree];
+    if (otherDegrees.length > 0) {
+      allQuals = [...allQuals, ...otherDegrees];
+    }
+
     setSaving(true);
     const { data, error: err } = await doctorApi.saveProfile({
       fullName: fullName.trim(),
       specialisations: specs,
       email: email.trim() || undefined,
       signatureBase64: signatureBase64 || undefined,
+      experienceYears: experienceYears ? Number(experienceYears) : undefined,
+      qualifications: allQuals,
+      languages: languages.length > 0 ? languages : undefined,
+      bio: bio.trim() || undefined
     });
     setSaving(false);
 
@@ -293,6 +363,53 @@ export function DoctorProfilePage() {
                 <option value="Other">Other</option>
               </select>
             </div>
+
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">Undergraduate Degree *</label>
+              <select className="input" value={ugDegree} onChange={(e) => {
+                setUgDegree(e.target.value);
+                setOtherDegrees([]);
+              }}>
+                <option value="">Select Degree</option>
+                <option value="MBBS">MBBS</option>
+                <option value="BDS">BDS</option>
+                <option value="BAMS">BAMS</option>
+                <option value="BHMS">BHMS</option>
+              </select>
+            </div>
+            {ugDegree && PG_DEGREES_MAP[ugDegree] && (
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Postgraduate & Super Speciality Degrees</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {PG_DEGREES_MAP[ugDegree].map(deg => (
+                    <label key={deg} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={otherDegrees.includes(deg)} 
+                        onChange={e => {
+                          if (e.target.checked) setOtherDegrees(prev => [...prev, deg]);
+                          else setOtherDegrees(prev => prev.filter(d => d !== deg));
+                        }} 
+                      />
+                      {deg}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label">Years of Experience</label>
+              <input className="input" type="number" min="0" max="100" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} placeholder="e.g. 15" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Languages Spoken</label>
+              <MultiSelectDropdown options={ALL_LANGUAGES} selected={languages} onChange={setLanguages} placeholder="Select Languages..." />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">Professional Bio</label>
+              <textarea className="input" style={{ minHeight: 100, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Brief description of your expertise and background..." />
+            </div>
+
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">E-Signature</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
