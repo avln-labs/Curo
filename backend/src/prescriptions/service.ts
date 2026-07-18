@@ -254,7 +254,7 @@ export const PrescriptionsService = {
 
       // Footer
       doc.fontSize(8).font('Helvetica-Oblique')
-         .text('This prescription is digitally generated through CURO.', 50, 750, { align: 'center' });
+         .text('This teleconsultation prescription is digitally generated through CURO in compliance with the Telemedicine Practice Guidelines (TPG), 2020.', 50, 750, { align: 'center' });
 
       doc.end();
     });
