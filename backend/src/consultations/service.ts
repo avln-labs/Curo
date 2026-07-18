@@ -9,6 +9,7 @@
  */
 
 import { db } from '../shared/database';
+import { getVisibleMeetLink } from '../shared/utils/meetLogic';
 
 export const ConsultationsService = {
 
@@ -34,11 +35,13 @@ export const ConsultationsService = {
       [doctorId, today]
     );
 
+    const filterLinks = (rows: any[]) => rows.map(r => ({ ...r, meet_link: getVisibleMeetLink(r.meet_link, r.slot_date, r.slot_time) }));
+
     return {
       today,
-      upcoming:  rows.filter((r: any) => r.status === 'confirmed'),
-      live:      rows.filter((r: any) => r.status === 'in_progress'),
-      completed: rows.filter((r: any) => r.status === 'completed'),
+      upcoming:  filterLinks(rows.filter((r: any) => r.status === 'confirmed')),
+      live:      filterLinks(rows.filter((r: any) => r.status === 'in_progress')),
+      completed: filterLinks(rows.filter((r: any) => r.status === 'completed')),
     };
   },
 
@@ -84,6 +87,10 @@ export const ConsultationsService = {
        WHERE a.id = $1 AND a.doctor_id = $2`,
       [appointmentId, doctorId]
     );
+    if (appt) {
+      appt.meet_link = getVisibleMeetLink(appt.meet_link, appt.slot_date, appt.slot_time);
+    }
+    return appt;
   },
 
   /** Start consultation — sets status to in_progress */

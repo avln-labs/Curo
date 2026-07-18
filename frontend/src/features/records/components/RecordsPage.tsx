@@ -362,42 +362,58 @@ export function RecordsPage() {
                 <p className="text-muted text-sm">You haven't received any digital prescriptions yet.</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, marginTop: 16 }}>
-                {prescriptions.map((p) => (
-                  <div key={p.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20, boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 16 }}>
+                {prescriptions.map((p, index) => {
+                  const isLatest = index === 0;
+                  return (
+                  <div key={p.id} style={{ 
+                    background: isLatest ? 'linear-gradient(135deg, var(--surface), var(--primary-muted))' : 'var(--surface)', 
+                    border: '1px solid', 
+                    borderColor: isLatest ? 'var(--primary)' : 'var(--border)', 
+                    borderRadius: 'var(--radius-lg)', 
+                    padding: isLatest ? 32 : 20, 
+                    boxShadow: isLatest ? '0 8px 32px rgba(15, 118, 110, 0.15)' : 'var(--shadow-sm)', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gridColumn: isLatest ? '1 / -1' : 'auto'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isLatest ? 24 : 16, flexWrap: 'wrap', gap: 12 }}>
                       <div>
+                        {isLatest && <div style={{ background: 'var(--primary)', color: 'white', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 20, fontWeight: 700, display: 'inline-block', marginBottom: 12, letterSpacing: '1px' }}>LATEST PRESCRIPTION</div>}
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                           {new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{p.diagnosis || 'General Prescription'}</h3>
+                        <h3 style={{ margin: 0, fontSize: isLatest ? '1.5rem' : '1.1rem', fontWeight: 600, fontFamily: isLatest ? 'var(--font-serif)' : 'inherit', color: 'var(--text-primary)' }}>{p.diagnosis || 'General Prescription'}</h3>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Dr. {p.doctor_name}</div>
                       </div>
-                      <a href={`${API_BASE}/prescriptions/${p.id}/pdf`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ padding: '4px 12px', borderRadius: 20 }}>
+                      <a href={`${API_BASE}/prescriptions/${p.id}/pdf`} target="_blank" rel="noreferrer" className="btn" style={{ background: isLatest ? 'var(--primary)' : 'var(--surface-card)', color: isLatest ? 'white' : 'var(--text-primary)', border: isLatest ? 'none' : '1px solid var(--border)', padding: '8px 16px', borderRadius: 20 }}>
                         View PDF
                       </a>
                     </div>
                     
                     {p.medications && p.medications.length > 0 && (
-                      <div style={{ marginTop: 'auto', background: 'var(--background)', borderRadius: 'var(--radius)', padding: 12, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>Medications</div>
+                      <div style={{ marginTop: 'auto', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(10px)', borderRadius: 'var(--radius)', padding: 16, border: '1px solid rgba(255,255,255,0.8)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 12 }}>Prescribed Medications</div>
                         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {p.medications.slice(0, 3).map((m: any, i: number) => (
-                            <li key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                              <span style={{ fontWeight: 500 }}>{m.drugName}</span>
-                              <span className="text-muted">{m.frequency} x {m.duration}</span>
+                          {p.medications.slice(0, isLatest ? 5 : 3).map((m: any, i: number) => (
+                            <li key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.drugName}</span>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <span style={{ background: 'var(--surface)', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', border: '1px solid var(--border)' }}>{m.frequency}</span>
+                                <span className="text-muted" style={{ fontSize: '0.75rem' }}>{m.duration}</span>
+                              </div>
                             </li>
                           ))}
-                          {p.medications.length > 3 && (
-                            <li style={{ fontSize: '0.8rem', color: 'var(--primary)', textAlign: 'center', paddingTop: 4 }}>
-                              + {p.medications.length - 3} more
+                          {p.medications.length > (isLatest ? 5 : 3) && (
+                            <li style={{ fontSize: '0.8rem', color: 'var(--primary)', textAlign: 'center', paddingTop: 8, fontWeight: 500 }}>
+                              + {p.medications.length - (isLatest ? 5 : 3)} more
                             </li>
                           )}
                         </ul>
                       </div>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>

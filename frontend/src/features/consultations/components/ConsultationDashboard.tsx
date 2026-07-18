@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../auth/AuthContext';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 import { consultationsApi, prescriptionsApi, API_BASE, type MedicineSuggestion } from '../../../shared/api';
 import { PreConsultSummary } from './PreConsultSummary';
 import { PatientDocuments } from './PatientDocuments';
@@ -39,6 +42,7 @@ function canJoinConsultation(slotTime: string) {
 }
 
 export function ConsultationDashboard() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [upcoming, setUpcoming] = useState<PatientAppt[]>([]);
   const [live, setLive] = useState<PatientAppt[]>([]);
@@ -159,6 +163,26 @@ export function ConsultationDashboard() {
     const diff = Date.now() - new Date(dob).getTime();
     return Math.abs(new Date(diff).getUTCFullYear() - 1970);
   };
+
+  const tourInitialized = useRef(false);
+
+  useEffect(() => {
+    const tourKey = `consultationTourDone_${(user as any)?.id || 'anon'}`;
+    if (!loading && !localStorage.getItem(tourKey) && !tourInitialized.current) {
+      tourInitialized.current = true;
+      const tour = driver({
+        showProgress: true,
+        steps: [
+          { element: '.tour-sidebar', popover: { title: 'Patient Queue', description: 'See your upcoming and live patients here.', side: "right", align: 'start' } },
+          { element: '.tour-workspace', popover: { title: 'Consultation Workspace', description: 'When you select a patient, you can review their briefing, start the consultation, and join the video call.', side: "top", align: 'start' } }
+        ],
+        onDestroyed: () => {
+          localStorage.setItem(tourKey, 'true');
+        }
+      });
+      setTimeout(() => tour.drive(), 800);
+    }
+  }, [loading, user]);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading dashboard...</div>;
 
@@ -291,15 +315,40 @@ export function ConsultationDashboard() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, width: isMobile ? '100%' : 'auto' }}>
-                  {activeAppt.status === 'in_progress' && activeAppt.consultation_type === 'online' && activeAppt.meet_link && (
-                    <a href={activeAppt.meet_link} target="_blank" rel="noreferrer" className="btn" style={{ background: 'var(--primary)', color: 'white', flex: isMobile ? 1 : 'none', textAlign: 'center' }}>Join Video Call</a>
-                  )}
-                  <button className="btn" style={{ background: 'var(--surface-card)', color: 'var(--text-primary)', flex: isMobile ? 1 : 'none' }} onClick={() => setActiveAppt(null)}>
-                    Close Workspace
-                  </button>
+                    <button className="btn" style={{ background: 'var(--surface-card)', color: 'var(--text-primary)', flex: isMobile ? 1 : 'none' }} onClick={() => setActiveAppt(null)}>
+                      Close Workspace
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </header>
+              </header>
+
+              {/* DEDICATED MEET LINK BANNER */}
+              {activeAppt.status === 'in_progress' && activeAppt.consultation_type === 'online' && activeAppt.meet_link && (
+                <div style={{ marginBottom: 48, background: 'var(--primary-muted)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', color: 'var(--primary)', fontSize: '1.25rem' }}>Live Consultation</h3>
+                    <div style={{ color: 'var(--text-secondary)' }}>The patient is waiting in the secure video room.</div>
+                  </div>
+                  <a href={activeAppt.meet_link} target="_blank" rel="noreferrer" className="btn" style={{ background: 'var(--primary)', color: 'white', padding: '12px 32px', fontSize: '1.1rem', flex: isMobile ? 1 : 'none', textAlign: 'center', boxShadow: '0 4px 12px rgba(15, 118, 110, 0.2)' }}>
+                    Join Video Call Now
+                  </a>
+                </div>
+              )}
+
+              {/* CONSULTATION CONTROLS (Only if not started) */}
+              {activeAppt.status === 'confirmed' && (
+                <section style={{ marginBottom: 48, padding: '24px 32px', background: 'var(--surface-raised)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-strong)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-sans)', fontSize: '1.1rem', margin: '0 0 4px 0' }}>Ready to begin?</h3>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                      {activeAppt.consultation_type === 'online' ? 'A Google Meet link is automatically generated and shared.' : 'This is an in-person consultation.'}
+                    </div>
+                  </div>
+                  <button className={`btn ${starting ? 'loading' : ''}`} style={{ background: 'var(--primary)', color: 'white', padding: '12px 32px', fontSize: '1.1rem', flex: isMobile ? 1 : 'none' }} onClick={() => handleStart(activeAppt, activeAppt.consultation_type === 'online')} disabled={starting}>
+                    {activeAppt.consultation_type === 'online' ? 'Start & Join Meet' : 'Start Consultation'}
+                  </button>
+                </section>
+              )}
 
             {/* AI BRIEFING & RECORDS */}
             <section style={{ marginBottom: 64 }}>
@@ -328,18 +377,7 @@ export function ConsultationDashboard() {
               )}
             </section>
 
-            {/* CONSULTATION CONTROLS (Only if not started) */}
-            {activeAppt.status === 'confirmed' && (
-              <section style={{ marginBottom: 64, padding: isMobile ? 24 : 32, background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', textAlign: 'center' }}>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', marginBottom: 12 }}>Ready to begin?</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-                  {activeAppt.consultation_type === 'online' ? 'A Google Meet link is automatically generated and securely shared with the patient.' : 'This is an in-person consultation.'}
-                </p>
-                <button className={`btn ${starting ? 'loading' : ''}`} style={{ background: 'var(--primary)', color: 'white', padding: '12px 32px', fontSize: '1.1rem', width: isMobile ? '100%' : 'auto' }} onClick={() => handleStart(activeAppt)} disabled={starting}>
-                  Start Consultation
-                </button>
-              </section>
-            )}
+
 
             {/* PRESCRIPTION PAD */}
             {activeAppt.status === 'in_progress' && (

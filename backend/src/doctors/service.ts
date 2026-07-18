@@ -11,6 +11,7 @@
 
 import crypto from 'crypto';
 import { db } from '../shared/database';
+import { getVisibleMeetLink } from '../shared/utils/meetLogic';
 import { verifyDoctorRegistration } from './verification';
 import type {
   OnboardingProfileData,
@@ -427,6 +428,11 @@ export const DoctorService = {
       [doctorId]
     );
 
+    const filteredAppointments = appointments.map((a: any) => ({
+      ...a,
+      meet_link: getVisibleMeetLink(a.meet_link, a.slot_date, a.slot_time)
+    }));
+
     return {
       date: today,
       stats: {
@@ -436,9 +442,9 @@ export const DoctorService = {
         pendingPayment: parseInt(stats.pending_payment),
         collectedAmount,
       },
-      appointments,
+      appointments: filteredAppointments,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      nextAppointment: (appointments as any[]).find((a) => a.status === 'confirmed') ?? null,
+      nextAppointment: filteredAppointments.find((a: any) => a.status === 'confirmed') ?? null,
       bookingUrl: doctor ? `curo.app/${doctor.slug}` : null,
     };
   },

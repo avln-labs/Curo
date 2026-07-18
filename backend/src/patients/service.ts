@@ -3,6 +3,7 @@
  */
 
 import { db } from '../shared/database';
+import { getVisibleMeetLink } from '../shared/utils/meetLogic';
 import type { PatientOnboardingData, UpdatePatientProfileData } from './schema';
 
 const CONTACT_CHANGE_COOLDOWN_DAYS = 14;
@@ -104,7 +105,16 @@ export const PatientService = {
       [patientId]
     );
 
-    return { appointments, prescriptions, documents };
+    const filteredAppointments = appointments.map((a: any) => ({
+      ...a,
+      meet_link: getVisibleMeetLink(a.meet_link, a.slot_date, a.slot_time)
+    }));
+
+    return {
+      appointments: filteredAppointments,
+      prescriptions,
+      documents,
+    };
   },
 
   /**

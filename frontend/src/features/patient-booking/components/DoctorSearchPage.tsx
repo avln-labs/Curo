@@ -107,10 +107,10 @@ export function DoctorSearchPage() {
             <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Top Specialties</h3>
             <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, margin: '0 -8px', padding: '0 8px' }}>
               {[
-                { name: 'General', icon: '🩺', bg: '#EFF6FF' },
-                { name: 'Pediatrics', icon: '👶', bg: '#FFFBEB' },
-                { name: 'Cardiology', icon: '❤️', bg: '#FFF1F2' },
-                { name: 'Skin', icon: '✨', bg: '#FAF5FF' },
+                { name: 'General Physician', icon: '🩺', bg: '#EFF6FF' },
+                { name: 'Pediatrician', icon: '👶', bg: '#FFFBEB' },
+                { name: 'Cardiologist', icon: '❤️', bg: '#FFF1F2' },
+                { name: 'Dermatologist', icon: '✨', bg: '#FAF5FF' },
               ].map(cat => (
                 <div key={cat.name} onClick={() => setSearchQuery(cat.name)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
                   <div style={{ width: 56, height: 56, background: cat.bg, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 8, border: '1px solid rgba(0,0,0,0.05)', boxShadow: 'var(--shadow-sm)' }}>
@@ -158,7 +158,7 @@ export function DoctorSearchPage() {
           <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
             {searchQuery ? 'Search Results' : 'Available Near You'}
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
             {filteredDoctors.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                 No doctors found matching your criteria.
@@ -168,29 +168,33 @@ export function DoctorSearchPage() {
                 <div 
                   key={i} 
                   onClick={() => navigate(`/dr/${doc.slug}`)}
-                  style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                  style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', cursor: 'pointer', display: 'flex', flexDirection: 'column', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
                   className="hover-card"
                 >
-                  <div style={{ display: 'flex', marginBottom: 12 }}>
-                    <div style={{ width: 48, height: 48, background: 'var(--surface)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontWeight: 'bold', marginRight: 12, border: '1px solid var(--border)', fontSize: '1.2rem' }}>
+                  <div style={{ display: 'flex', marginBottom: 20 }}>
+                    <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, var(--surface-raised), var(--background))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontWeight: 600, marginRight: 16, border: '1px solid var(--border)', fontSize: '1.1rem', flexShrink: 0, boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)' }}>
                       {doc.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>Dr. {doc.full_name}</h4>
-                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--text-secondary)', background: 'var(--background)', padding: '2px 6px', borderRadius: 4 }}>
-                          ⭐ 4.9
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                        <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Dr. {doc.full_name}</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', background: 'var(--surface-raised)', padding: '4px 10px', borderRadius: 24, border: '1px solid var(--border)' }}>
+                          <span style={{ color: '#F59E0B', marginRight: 4, fontSize: '0.85rem' }}>★</span> 4.9
                         </div>
                       </div>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{doc.specialisations.join(', ')}</p>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{doc.specialisations.join(' • ')}</p>
                     </div>
                   </div>
                   
-                  <div style={{ background: 'var(--background)', borderRadius: 'var(--radius)', padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}>
-                      <span style={{ marginRight: 4 }}>📅</span> View Slots
+                  <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>View available slots</span>
+                      <span style={{ transition: 'transform 0.2s ease' }} className="arrow-icon">→</span>
                     </div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>₹{doc.starting_fee}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 500, marginRight: 6 }}>Consults at</span>
+                      ₹{doc.starting_fee}
+                    </div>
                   </div>
                 </div>
               ))
@@ -200,8 +204,9 @@ export function DoctorSearchPage() {
       </div>
       
       <style>{`
-        .hover-card { transition: border-color 0.2s, transform 0.2s; }
-        .hover-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .hover-card { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .hover-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
+        .hover-card:hover .arrow-icon { transform: translateX(4px); }
       `}</style>
     </div>
   );

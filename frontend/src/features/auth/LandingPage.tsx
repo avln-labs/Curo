@@ -10,16 +10,16 @@ type Phase = 'role' | 'auth' | 'otp' | 'success';
 
 const ROLE_CONFIG = {
   DOCTOR: {
-    icon: '🩺',
-    title: 'Independent Doctor',
-    desc: 'Your frictionless clinical workspace.',
-    bullets: ['AI pre-consult briefs', '20-second prescriptions', 'Respect for your time'],
+    icon: 'Dr.',
+    title: 'I am a Doctor',
+    desc: 'Reclaim 2 hours daily with AI briefs and 20-second prescriptions.',
+    bullets: ['Stop writing the same prescription 50 times', 'Know patient history before they enter', 'Frictionless video consults'],
   },
   PATIENT: {
-    icon: '🙋',
-    title: 'Patient',
-    desc: 'Your longitudinal health timeline.',
-    bullets: ['Book in seconds', 'Prescriptions via WhatsApp', 'Secure health records'],
+    icon: 'Pt.',
+    title: 'I am a Patient',
+    desc: 'Never lose a medical record again. Book and consult instantly.',
+    bullets: ['Instant, no-friction booking', 'Prescriptions straight to WhatsApp', 'Your complete health timeline'],
   },
 } as const;
 
@@ -146,11 +146,11 @@ export function LandingPage() {
         {phase === 'role' && (
           <>
             <h1 className="landing-h1">
-              The <span>Frictionless</span><br />
-              Clinical Operating System.
+              Modern Healthcare,<br />
+              <span>Without the Friction.</span>
             </h1>
             <p className="landing-sub">
-              We respect your time above all else. Zero-friction booking, AI pre-consult briefs, and prescriptions in 20 seconds.
+              For independent doctors who want their time back, and patients who want their health records organized.
             </p>
             
             <div className="role-selector">
@@ -173,6 +173,97 @@ export function LandingPage() {
             </div>
           </>
         )}
+      </section>
+
+      {phase === 'role' && (
+        <>
+          <section className="marketing-section alt">
+            <div className="split-layout">
+              <div className="split-content">
+                <div className="marketing-badge">For Doctors</div>
+                <h2 className="marketing-h2">Stop fighting your software. Start practicing medicine.</h2>
+                <p className="marketing-sub">
+                  Generic clinic software slows you down with endless clicks and bloated features. Curo is built differently. We handle the admin so you can handle the patient.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="visual-mockup-item">
+                    <div>
+                      <strong style={{ display: 'block' }}>AI Pre-Consult Briefs</strong>
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Know exactly why they're here before they even sit down.</span>
+                    </div>
+                  </div>
+                  <div className="visual-mockup-item">
+                    <div>
+                      <strong style={{ display: 'block' }}>20-Second Prescriptions</strong>
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Lightning-fast autocomplete built for the real world.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="split-visual" style={{ background: 'linear-gradient(135deg, var(--surface), var(--primary-muted))' }}>
+                <div style={{ padding: '24px', background: 'var(--surface-raised)', borderRadius: 'var(--radius)', boxShadow: '0 12px 32px rgba(0,0,0,0.1)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold', marginBottom: '8px' }}>BRIEFING</div>
+                  <div style={{ fontWeight: 600, marginBottom: '8px' }}>Chief Complaint: Dengue</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Patient presents with severe joint pain and high fever for 3 days. Previous history of malaria.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="marketing-section">
+            <div className="split-layout reverse">
+              <div className="split-visual" style={{ background: 'linear-gradient(135deg, var(--surface), var(--warning-bg))' }}>
+                <div style={{ padding: '24px', background: 'var(--surface-raised)', borderRadius: 'var(--radius)', boxShadow: '0 12px 32px rgba(0,0,0,0.1)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 'bold', marginBottom: '8px' }}>RECORD SAVED</div>
+                  <div style={{ fontWeight: 600, marginBottom: '8px' }}>Prescription: Paracetamol 500mg</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Available instantly via WhatsApp and securely stored in your timeline.</div>
+                </div>
+              </div>
+              <div className="split-content">
+                <div className="marketing-badge" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>For Patients</div>
+                <h2 className="marketing-h2">Your health history, finally in one place.</h2>
+                <p className="marketing-sub">
+                  No more carrying heavy physical files or scrolling endlessly through WhatsApp to find that one prescription from 6 months ago. 
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="visual-mockup-item">
+                    <div>
+                      <strong style={{ display: 'block' }}>Instant Access</strong>
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View your entire medical history on any device, anywhere.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="marketing-section alt" style={{ textAlign: 'center' }}>
+            <h2 className="marketing-h2">How it Works</h2>
+            <p className="marketing-sub" style={{ margin: '0 auto 48px' }}>
+              We've stripped away everything that doesn't add value. What remains is a perfectly optimized 3-step loop.
+            </p>
+            <div className="process-grid">
+              <div className="process-step">
+                <span className="process-icon" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>01</span>
+                <h3 className="process-h3">Book</h3>
+                <p className="process-p">Patients book via a frictionless public link. No app downloads required.</p>
+              </div>
+              <div className="process-step">
+                <span className="process-icon" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>02</span>
+                <h3 className="process-h3">Consult</h3>
+                <p className="process-p">Doctors review AI briefs and join a secure Google Meet with one click.</p>
+              </div>
+              <div className="process-step">
+                <span className="process-icon" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>03</span>
+                <h3 className="process-h3">Prescribe</h3>
+                <p className="process-p">Prescriptions are generated in seconds and sent directly to the patient's phone.</p>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      <section className="landing-hero" style={{ padding: phase === 'role' ? '0' : '24px 24px 80px', flex: phase === 'role' ? 'none' : '1' }}>
 
         {phase === 'auth' && selectedRole && (
           <div className="auth-box">
@@ -242,18 +333,30 @@ export function LandingPage() {
           </div>
         )}
         {phase === 'success' && (
-          <div className="auth-box" style={{ textAlign: 'center' }}>
-            <div className="success-message">{successMsg}</div>
-            <p className="auth-sub">Preparing your secure environment...</p>
-            <div className="success-loader">
-              <div className="success-loader-fill" />
-            </div>
+        <section className="landing-hero" style={{ justifyContent: 'center' }}>
+          <div className="success-message">{successMsg}</div>
+          <div className="success-loader">
+            <div className="success-loader-fill" />
           </div>
-        )}
+        </section>
+      )}
       </section>
 
       {/* Render AnimatedFAQ below the Hero section */}
       {phase === 'role' && <AnimatedFAQ />}
+
+      {phase === 'role' && (
+        <footer className="landing-footer">
+          <div className="landing-footer-content">
+            <p>
+              Built by <a href="https://sufyaanahmed.com/" target="_blank" rel="noreferrer">Sufyaan Ahmed</a>, Founder & Developer.
+            </p>
+            <p style={{ marginTop: '8px' }}>
+              Connect on <a href="https://www.linkedin.com/in/sufyaan-ahmed/" target="_blank" rel="noreferrer">LinkedIn</a>.
+            </p>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
