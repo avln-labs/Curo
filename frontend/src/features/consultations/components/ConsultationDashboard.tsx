@@ -223,7 +223,7 @@ export function ConsultationDashboard() {
           {live.length > 0 && !activeAppt && (
             <div>
               <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--primary)', marginBottom: 12 }}>Live Session</h3>
-              <div style={{ background: 'var(--surface-dark-elevated)', borderRadius: 'var(--radius)', padding: 16 }}>
+              <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--radius)', padding: 16 }}>
                 <div style={{ fontWeight: 600 }}>{live[0].patient_name}</div>
                 <div style={{ fontSize: '0.85rem', color: '#a09d96', marginBottom: 12 }}>{calculateAge(live[0].date_of_birth)}y, {live[0].gender}</div>
                 <button className="btn" style={{ background: 'var(--primary)', color: 'white', width: '100%' }} onClick={() => selectPatient(live[0])}>Resume Consult</button>

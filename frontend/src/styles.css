@@ -1279,15 +1279,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   to { transform: rotate(360deg); }
 }
 
-
-/* ============================================================
-   DARK MODE — Design.md: "Dark mode is mandatory"
-   Softer contrast, no pure black/white, Claude-style readability
-   ============================================================ */
-
-[data-theme='dark'] {
-  --bg: #0B0F14;
-  --surface: #111827;
   --surface-raised: #1B2432;
   --border: #273244;
   --border-strong: #3B4A61;

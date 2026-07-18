@@ -2,13 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 
-const THEME_KEY = 'curo.theme';
 
-function getInitialTheme(): 'light' | 'dark' {
-  const stored = localStorage.getItem(THEME_KEY);
-  if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
 
 const DOCTOR_NAV = [
   { label: 'Dashboard',      to: '/dashboard',         icon: '⊞' },
@@ -50,12 +44,10 @@ export function AppShell() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
-
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+    // Force light theme
+    document.documentElement.setAttribute('data-theme', 'light');
+  }, []);
 
   const navItems = user?.role === 'DOCTOR' ? DOCTOR_NAV : PATIENT_NAV;
   // Admin Console only visible to ADMIN role — never to doctors or patients
@@ -94,14 +86,7 @@ export function AppShell() {
         )}
 
         <div className="sidebar-footer">
-          <button
-            className="theme-toggle"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
+
           <div className="user-pill">
             <div className="user-avatar">{initials}</div>
             <div className="user-info">
