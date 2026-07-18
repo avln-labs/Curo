@@ -70,7 +70,7 @@ export const ConsultationsService = {
 
   /** Get single appointment detail (doctor view) */
   async getAppointment(appointmentId: string, doctorId: string) {
-    return db.queryOne(
+    const appt = await db.queryOne<any>(
       `SELECT
          a.id, a.status, a.slot_date, a.slot_time,
          a.chief_complaint, a.complaint_description as description, ct.type as consultation_type, a.meet_link,
