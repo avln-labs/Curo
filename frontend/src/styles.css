@@ -1279,48 +1279,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   to { transform: rotate(360deg); }
 }
 
-  --surface-raised: #1B2432;
-  --border: #273244;
-  --border-strong: #3B4A61;
-  --text-primary: #F9FAFB;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --primary: #2DD4BF;
-  --primary-hover: #5EEAD4;
-  --primary-light: #134E4A;
-  --primary-muted: #0F2E2B;
-  --success-bg: #0C2617;
-  --warning-bg: #2A1F08;
-  --error-bg: #2C1214;
-  --info-bg: #10203A;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
-  --shadow: 0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
-  --shadow-md: 0 4px 6px rgba(0,0,0,.45), 0 2px 4px rgba(0,0,0,.4);
-}
-
-[data-theme='dark'] .btn-primary { color: #052E2B; }
-[data-theme='dark'] .notice-info    { color: #93C5FD; border-color: #1E3A8A; }
-[data-theme='dark'] .notice-success { color: #86EFAC; border-color: #14532D; }
-[data-theme='dark'] .notice-warning { color: #FCD34D; border-color: #78350F; }
-[data-theme='dark'] .notice-error   { color: #FCA5A5; border-color: #7F1D1D; }
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  width: calc(100% - var(--space-4) * 2);
-  margin: 0 var(--space-4) var(--space-2);
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.8125rem;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.theme-toggle:hover { background: var(--surface-raised); color: var(--text-primary); }
-
 /* ============================================================
    UPLOAD DROPZONE — patient medical records
    ============================================================ */
