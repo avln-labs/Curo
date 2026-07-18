@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { API_BASE } from '../../../shared/api';
+import { API_BASE } from '../../shared/api';
 import { AnimatedFAQ } from './components/AnimatedFAQ';
 import './landing.css';
 
