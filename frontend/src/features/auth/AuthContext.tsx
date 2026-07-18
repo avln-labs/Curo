@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authApi, storeTokens, clearTokens, getStoredUser, getAccessToken } from '../../shared/api';
+import { authApi, storeTokens, clearTokens, getStoredUser, getAccessToken, API_BASE } from '../../shared/api';
 import { useNavigate } from 'react-router-dom';
 
 export type AuthRole = 'DOCTOR' | 'PATIENT' | 'ADMIN';
@@ -38,18 +38,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // In-memory OTP store for offline demo mode
 const demoOtpStore = new Map<string, boolean>();
 
-async function isBackendOnline(): Promise<boolean> {
-  try {
-    const res = await fetch('http://localhost:4000/api/v1/health', { signal: AbortSignal.timeout(1500) });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isBackendOnline = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(1500) });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }, []);
 
   // Restore session from localStorage on mount
   useEffect(() => {

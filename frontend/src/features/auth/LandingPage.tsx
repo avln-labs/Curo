@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { API_BASE } from '../../../shared/api';
 import { AnimatedFAQ } from './components/AnimatedFAQ';
 import './landing.css';
 
@@ -56,7 +57,7 @@ export function LandingPage() {
   }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
-    fetch('http://localhost:4000/api/v1/health')
+    fetch(`${API_BASE}/health`)
       .then((r) => setBackendOnline(r.ok))
       .catch(() => setBackendOnline(false));
   }, []);
