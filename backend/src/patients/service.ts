@@ -3,6 +3,7 @@
  */
 
 import { db } from '../shared/database';
+import { getVisibleMeetLink } from '../shared/utils/meetLogic';
 import type { PatientOnboardingData, UpdatePatientProfileData } from './schema';
 
 const CONTACT_CHANGE_COOLDOWN_DAYS = 14;
@@ -76,7 +77,19 @@ export const PatientService = {
       `SELECT
          px.id, px.serial_number, px.diagnosis, px.created_at,
          px.followup_date, px.verify_token,
-         d.full_name as doctor_name
+         d.full_name as doctor_name,
+         COALESCE(
+           (SELECT json_agg(
+              json_build_object(
+                'drugName', pm.drug_name,
+                'dose', pm.dose,
+                'frequency', pm.frequency,
+                'duration', pm.duration
+              )
+            )
+            FROM prescription_medications pm
+            WHERE pm.prescription_id = px.id), '[]'::json
+         ) as medications
        FROM prescriptions px
        JOIN doctors d ON d.id = px.doctor_id
        WHERE px.patient_id = $1
@@ -92,7 +105,16 @@ export const PatientService = {
       [patientId]
     );
 
-    return { appointments, prescriptions, documents };
+    const filteredAppointments = appointments.map((a: any) => ({
+      ...a,
+      meet_link: getVisibleMeetLink(a.meet_link, a.slot_date, a.slot_time)
+    }));
+
+    return {
+      appointments: filteredAppointments,
+      prescriptions,
+      documents,
+    };
   },
 
   /**

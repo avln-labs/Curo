@@ -11,6 +11,7 @@
 
 import crypto from 'crypto';
 import { db } from '../shared/database';
+import { getVisibleMeetLink } from '../shared/utils/meetLogic';
 import { verifyDoctorRegistration } from './verification';
 import type {
   OnboardingProfileData,
@@ -174,6 +175,10 @@ export const DoctorService = {
         onboarding_step = GREATEST(onboarding_step, 1),
         verification_status = 'verified',
         signature_url = COALESCE($5, signature_url),
+        bio = COALESCE($6, bio),
+        qualifications = COALESCE($7, qualifications),
+        languages = COALESCE($8, languages),
+        experience_years = COALESCE($9, experience_years),
         updated_at = NOW()
        WHERE id = $4`,
       [
@@ -182,6 +187,10 @@ export const DoctorService = {
         data.specialisations,
         doctorId,
         data.signatureBase64 || null,
+        data.bio || null,
+        data.qualifications || null,
+        data.languages || null,
+        data.experienceYears || null
       ]
     );
 
@@ -419,6 +428,11 @@ export const DoctorService = {
       [doctorId]
     );
 
+    const filteredAppointments = appointments.map((a: any) => ({
+      ...a,
+      meet_link: getVisibleMeetLink(a.meet_link, a.slot_date, a.slot_time)
+    }));
+
     return {
       date: today,
       stats: {
@@ -428,9 +442,9 @@ export const DoctorService = {
         pendingPayment: parseInt(stats.pending_payment),
         collectedAmount,
       },
-      appointments,
+      appointments: filteredAppointments,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      nextAppointment: (appointments as any[]).find((a) => a.status === 'confirmed') ?? null,
+      nextAppointment: filteredAppointments.find((a: any) => a.status === 'confirmed') ?? null,
       bookingUrl: doctor ? `curo.app/${doctor.slug}` : null,
     };
   },
@@ -439,7 +453,8 @@ export const DoctorService = {
   async getPublicProfile(slug: string) {
     const doctor = await db.queryOne<DoctorRow>(
       `SELECT id, slug, full_name, qualifications, specialisations, city, bio,
-              languages, average_rating, review_count, verification_status, booking_link_active
+              languages, average_rating, review_count, verification_status, booking_link_active,
+              experience_years, clinic_name
        FROM doctors WHERE slug = $1 AND is_active = true`,
       [slug]
     );
@@ -590,6 +605,29 @@ export const DoctorService = {
     }
 
     return { slots, blocked: false, slotDuration };
+  },
+
+  /**
+   * Search all active, verified doctors
+   */
+  async searchDoctors() {
+    const { rows } = await db.query(`
+      SELECT
+        d.id,
+        d.slug,
+        d.full_name,
+        d.qualifications,
+        d.specialisations,
+        d.city,
+        d.clinic_name,
+        COALESCE(
+          (SELECT fee FROM consultation_types ct WHERE ct.doctor_id = d.id AND ct.is_active = true ORDER BY fee ASC LIMIT 1),
+          '600'
+        ) as starting_fee
+      FROM doctors d
+      WHERE d.is_active = true AND d.verification_status = 'verified'
+    `);
+    return rows;
   },
 };
 

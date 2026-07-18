@@ -20,7 +20,6 @@ const DOCTOR_NAV = [
 const PATIENT_NAV = [
   { label: 'My Records',          to: '/records',          icon: '◈' },
   { label: 'My Profile',          to: '/patient-profile',  icon: '👤' },
-  { label: 'Prescriptions',       to: '/prescriptions',    icon: '✦' },
   { label: 'Book Consultation',   to: '/booking/details',  icon: '📅' },
 ];
 
@@ -127,11 +126,6 @@ export function AppShell() {
             {user?.role === 'DOCTOR' ? 'CURO — Clinical Workspace' : 'CURO — Patient Portal'}
           </div>
           <div className="topbar-actions">
-            {user?.role === 'DOCTOR' && (
-              <Link to="/booking/details" className="btn btn-primary btn-sm">
-                + New Booking
-              </Link>
-            )}
           </div>
         </header>
         <Outlet />

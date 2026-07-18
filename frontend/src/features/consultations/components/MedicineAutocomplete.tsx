@@ -78,6 +78,7 @@ export function MedicineAutocomplete({ value, disabled, placeholder, onChange, o
     <div className="autocomplete" ref={wrapperRef}>
       <input
         className="input"
+        style={{ width: '100%', padding: '12px 16px', fontSize: '1.1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }}
         value={value}
         disabled={disabled}
         placeholder={placeholder || 'Drug name — try "Para"'}

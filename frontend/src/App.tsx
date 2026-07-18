@@ -1,6 +1,6 @@
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { LandingPage } from './features/auth/LandingPage';
-import { DoctorOnboardingPage, DoctorDashboardPage, DoctorSchedulePage } from './features/doctor-onboarding';
+import { DoctorOnboardingPage, DoctorDashboardPage } from './features/doctor-onboarding';
 import { DoctorPublicPage } from './features/doctor-booking';
 import { PatientThreadPage } from './features/patient-thread';
 import { ConsultationDashboard } from './features/consultations';
@@ -11,6 +11,7 @@ import { AdminPanel } from './features/admin';
 import { HealthThreadPage } from './features/health_threads';
 import { HomePage } from './features/home';
 import { PatientOnboardingPage, PatientProfilePage } from './features/patient-profile';
+import { DoctorSearchPage } from './features/patient-booking';
 import { DoctorProfilePage } from './features/doctor-profile';
 import { AppShell } from './shared/components/AppShell';
 import { RequireAuth, useAuth } from './features/auth/AuthContext';
@@ -70,6 +71,16 @@ function App() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/doctor-onboarding"
+        element={
+          <RequireAuth>
+            <RequireDoctor>
+              <DoctorOnboardingPage />
+            </RequireDoctor>
+          </RequireAuth>
+        }
+      />
 
       {/* Protected: workspace with AppShell sidebar */}
       <Route element={<RequireAuth><AppShell /></RequireAuth>}>
@@ -77,7 +88,6 @@ function App() {
 
         {/* ── Doctor-only routes ───────────────────────────────────── */}
         <Route path="/dashboard"          element={<RequireDoctor><DoctorDashboardPage /></RequireDoctor>} />
-        <Route path="/doctor-onboarding"  element={<RequireDoctor><DoctorOnboardingPage /></RequireDoctor>} />
         <Route path="/doctor-profile"     element={<RequireDoctor><DoctorProfilePage /></RequireDoctor>} />
         <Route path="/consultations"      element={<RequireDoctor><ConsultationDashboard /></RequireDoctor>} />
         <Route path="/health-threads"     element={<RequireDoctor><HealthThreadPage /></RequireDoctor>} />
@@ -90,6 +100,7 @@ function App() {
 
         {/* ── Patient-only routes ──────────────────────────────────── */}
         <Route path="/patient-profile"    element={<RequirePatient><PatientProfilePage /></RequirePatient>} />
+        <Route path="/booking/details"    element={<RequirePatient><DoctorSearchPage /></RequirePatient>} />
 
         {/* ── Admin-only routes ────────────────────────────────────── */}
         <Route path="/admin"              element={<AdminPanel />} />

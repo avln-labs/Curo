@@ -74,6 +74,25 @@ prescriptionRouter.post(
   }
 );
 
+// ─── GET /prescriptions/my ───────────────────────────────────────────────────
+
+prescriptionRouter.get(
+  '/my',
+  requireAuth,
+  requireRole('DOCTOR'),
+  async (req: AuthRequest, res) => {
+    // Get doctor
+    const doctorRow = await db.queryOne<{ id: string }>(
+      'SELECT id FROM doctors WHERE user_id = $1',
+      [req.user!.userId]
+    );
+    if (!doctorRow) return res.status(404).json({ success: false, error: { message: 'Doctor not found.' } });
+
+    const data = await PrescriptionsService.getByDoctorId(doctorRow.id);
+    return res.json({ success: true, data });
+  }
+);
+
 // ─── GET /prescriptions/:id ──────────────────────────────────────────────────
 
 prescriptionRouter.get(

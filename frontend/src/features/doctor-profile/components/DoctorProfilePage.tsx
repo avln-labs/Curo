@@ -1,13 +1,56 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { doctorApi } from '../../../shared/api';
+import { doctorApi, api } from '../../../shared/api';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
+const PG_DEGREES_MAP: Record<string, string[]> = {
+  'MBBS': ['MD', 'MS', 'DNB', 'DM', 'MCh', 'Fellowship', 'Diploma'],
+  'BDS': ['MDS', 'Fellowship', 'Diploma'],
+  'BAMS': ['MD (Ayurveda)', 'MS (Ayurveda)', 'Diploma'],
+  'BHMS': ['MD (Homeopathy)', 'Diploma']
+};
+
+const ALL_LANGUAGES = ['English', 'Hindi', 'Kannada', 'Tamil', 'Telugu', 'Malayalam', 'Marathi', 'Bengali'];
+
+function MultiSelectDropdown({ options, selected, onChange, placeholder }: { options: string[], selected: string[], onChange: (val: string[]) => void, placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <div 
+        className="input" 
+        style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 40, alignItems: 'center' }}
+        onClick={() => setOpen(!open)}
+      >
+        {selected.length === 0 && <span style={{ color: 'var(--text-tertiary)' }}>{placeholder}</span>}
+        {selected.map(s => (
+          <span key={s} style={{ background: 'var(--primary-muted)', color: 'var(--primary)', padding: '2px 8px', borderRadius: 12, fontSize: '0.85rem' }}>
+            {s} 
+            <span style={{ marginLeft: 6, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onChange(selected.filter(x => x !== s)); }}>×</span>
+          </span>
+        ))}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', zIndex: 10, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+          {options.map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+              <input type="checkbox" checked={selected.includes(opt)} onChange={(e) => {
+                if (e.target.checked) onChange([...selected, opt]);
+                else onChange(selected.filter(x => x !== opt));
+              }} />
+              <span style={{ fontSize: '0.95rem' }}>{opt}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DoctorProfilePage() {
   const { user, mutateUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'details' | 'fees' | 'schedule'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'fees' | 'schedule' | 'integrations'>('details');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +63,11 @@ export function DoctorProfilePage() {
   const [bookingUrl, setBookingUrl] = useState('');
   const [signatureBase64, setSignatureBase64] = useState<string>('');
   const [hasSignature, setHasSignature] = useState(false);
+  const [experienceYears, setExperienceYears] = useState('');
+  const [ugDegree, setUgDegree] = useState('');
+  const [otherDegrees, setOtherDegrees] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [bio, setBio] = useState('');
 
   // ── Fee Fields ──
   const [onlineFee, setOnlineFee] = useState('');
@@ -29,16 +77,24 @@ export function DoctorProfilePage() {
   const [followUpFee, setFollowUpFee] = useState('');
 
   // ── Schedule Fields ──
-  const [schedule, setSchedule] = useState<Record<string, { active: boolean; start: string; end: string }>>({
-    Mon: { active: true, start: '09:00', end: '13:00' },
-    Tue: { active: true, start: '09:00', end: '13:00' },
-    Wed: { active: true, start: '09:00', end: '13:00' },
-    Thu: { active: true, start: '09:00', end: '17:00' },
-    Fri: { active: true, start: '09:00', end: '17:00' },
-    Sat: { active: true, start: '09:00', end: '12:00' },
+  const [schedule, setSchedule] = useState<Record<string, { active: boolean; start: string; end: string; hasBreak: boolean; breakStart: string; breakEnd: string }>>({
+    Mon: { active: true, start: '09:00', end: '17:00', hasBreak: true, breakStart: '13:00', breakEnd: '14:00' },
+    Tue: { active: true, start: '09:00', end: '17:00', hasBreak: true, breakStart: '13:00', breakEnd: '14:00' },
+    Wed: { active: true, start: '09:00', end: '17:00', hasBreak: true, breakStart: '13:00', breakEnd: '14:00' },
+    Thu: { active: true, start: '09:00', end: '17:00', hasBreak: true, breakStart: '13:00', breakEnd: '14:00' },
+    Fri: { active: true, start: '09:00', end: '17:00', hasBreak: true, breakStart: '13:00', breakEnd: '14:00' },
+    Sat: { active: true, start: '09:00', end: '13:00', hasBreak: false, breakStart: '13:00', breakEnd: '14:00' },
   });
   const [bufferMins, setBufferMins] = useState('5');
   const [maxPatients, setMaxPatients] = useState('25');
+
+  // ── Integration Fields ──
+  const [upiId, setUpiId] = useState('');
+  const [upiQrUrl, setUpiQrUrl] = useState('');
+  const [savingUpi, setSavingUpi] = useState(false);
+  const [upiSuccess, setUpiSuccess] = useState('');
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -51,6 +107,21 @@ export function DoctorProfilePage() {
         if (d.email) setEmail(d.email);
         if (d.slug) setBookingUrl(`curo.app/${d.slug}`);
         if (d.signature_url) setHasSignature(true);
+        if (d.upi_id) setUpiId(d.upi_id);
+        if (d.upi_qr_url) setUpiQrUrl(d.upi_qr_url);
+        
+        if (d.experience_years) setExperienceYears(String(d.experience_years));
+        if (d.languages?.length) setLanguages(d.languages as string[]);
+        if (d.bio) setBio(d.bio);
+
+        if (d.qualifications?.length > 0) {
+          const quals = d.qualifications as string[];
+          const ugOptions = ['MBBS', 'BDS', 'BAMS', 'BHMS'];
+          const ug = quals.find(q => ugOptions.includes(q)) || quals[0] || '';
+          setUgDegree(ug);
+          const rest = quals.filter(q => q !== ug);
+          setOtherDegrees(rest);
+        }
 
         const consultationTypes = d.consultationTypes as any[] | undefined;
         if (consultationTypes) {
@@ -69,7 +140,15 @@ export function DoctorProfilePage() {
            d.schedule.forEach((s: any) => {
              const dayName = Object.keys(DAY_MAP).find(k => DAY_MAP[k] === s.day_of_week);
              if (dayName) {
-               newSched[dayName] = { active: s.is_active, start: s.start_time.slice(0,5), end: s.end_time.slice(0,5) };
+               const hasBreak = s.breaks && s.breaks.length > 0;
+               newSched[dayName] = { 
+                 active: s.is_active, 
+                 start: s.start_time.slice(0,5), 
+                 end: s.end_time.slice(0,5),
+                 hasBreak,
+                 breakStart: hasBreak ? s.breaks[0].start_time.slice(0,5) : '13:00',
+                 breakEnd: hasBreak ? s.breaks[0].end_time.slice(0,5) : '14:00'
+               };
              }
            });
            setSchedule(newSched);
@@ -80,6 +159,13 @@ export function DoctorProfilePage() {
           setMaxPatients(String(d.settings.max_patients_per_day || 25));
         }
       }
+      
+      // Load Google status
+      const { data: gRes } = await api.get<{ success: boolean; connected: boolean }>('/doctors/google/status');
+      if (gRes?.success) {
+        setGoogleConnected(gRes.connected);
+      }
+
       setLoading(false);
     }
     loadProfile();
@@ -105,12 +191,21 @@ export function DoctorProfilePage() {
     if (!fullName.trim()) return setError('Full name is required.');
     if (specs.length === 0) return setError('Specialisation is required.');
 
+    let allQuals = [ugDegree];
+    if (otherDegrees.length > 0) {
+      allQuals = [...allQuals, ...otherDegrees];
+    }
+
     setSaving(true);
     const { data, error: err } = await doctorApi.saveProfile({
       fullName: fullName.trim(),
       specialisations: specs,
       email: email.trim() || undefined,
       signatureBase64: signatureBase64 || undefined,
+      experienceYears: experienceYears ? Number(experienceYears) : undefined,
+      qualifications: allQuals,
+      languages: languages.length > 0 ? languages : undefined,
+      bio: bio.trim() || undefined
     });
     setSaving(false);
 
@@ -142,13 +237,17 @@ export function DoctorProfilePage() {
     const activeDays = DAYS.filter((d) => schedule[d].active);
     if (activeDays.length === 0) return setError('At least one working day is required.');
 
-    const schedulePayload = activeDays.map((day) => ({
-      dayOfWeek: DAY_MAP[day],
-      startTime: schedule[day].start,
-      endTime: schedule[day].end,
-      isActive: true,
-      breaks: [],
-    }));
+    const schedulePayload = activeDays.map((day) => {
+      const dayData = schedule[day];
+      const breaks = dayData.hasBreak ? [{ startTime: dayData.breakStart, endTime: dayData.breakEnd }] : [];
+      return {
+        dayOfWeek: DAY_MAP[day],
+        startTime: dayData.start,
+        endTime: dayData.end,
+        isActive: true,
+        breaks,
+      };
+    });
 
     setSaving(true);
     const { data, error: err } = await doctorApi.saveSchedule({
@@ -162,6 +261,41 @@ export function DoctorProfilePage() {
     if (err || !data?.success) return setError(err || data?.message || 'Failed to save schedule.');
     setSuccessMsg('Schedule saved successfully.');
   }
+
+  const handleSaveUpi = async () => {
+    setSavingUpi(true);
+    setUpiSuccess('');
+    const { data: res, error: err } = await doctorApi.updateUpi({ upiId, upiQrUrl });
+    setSavingUpi(false);
+    if (res?.success) {
+      setUpiSuccess('UPI Details updated successfully.');
+    } else {
+      setError(err || 'Failed to update UPI details.');
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    setGoogleLoading(true);
+    const { data: res, error: err } = await api.get<{ success: boolean; url: string }>('/doctors/google/auth');
+    setGoogleLoading(false);
+    if (res?.success && res.url) {
+      window.location.href = res.url;
+    } else {
+      setError(err || 'Failed to initiate Google OAuth flow.');
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    setGoogleLoading(true);
+    const { data: res, error: err } = await api.delete<{ success: boolean }>('/doctors/google/disconnect');
+    setGoogleLoading(false);
+    if (res?.success) {
+      setGoogleConnected(false);
+      alert('Google Calendar disconnected successfully.');
+    } else {
+      setError(err || 'Failed to disconnect Google Calendar.');
+    }
+  };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading profile...</div>;
 
@@ -185,7 +319,7 @@ export function DoctorProfilePage() {
       {successMsg && <div className="notice" style={{ marginBottom: 16, background: '#D1FAE5', color: '#065F46', border: '1px solid #A7F3D0' }}>{successMsg}</div>}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-        {(['details', 'fees', 'schedule'] as const).map(tab => (
+        {(['details', 'fees', 'schedule', 'integrations'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => { setActiveTab(tab); setError(''); setSuccessMsg(''); }}
@@ -229,6 +363,53 @@ export function DoctorProfilePage() {
                 <option value="Other">Other</option>
               </select>
             </div>
+
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">Undergraduate Degree *</label>
+              <select className="input" value={ugDegree} onChange={(e) => {
+                setUgDegree(e.target.value);
+                setOtherDegrees([]);
+              }}>
+                <option value="">Select Degree</option>
+                <option value="MBBS">MBBS</option>
+                <option value="BDS">BDS</option>
+                <option value="BAMS">BAMS</option>
+                <option value="BHMS">BHMS</option>
+              </select>
+            </div>
+            {ugDegree && PG_DEGREES_MAP[ugDegree] && (
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Postgraduate & Super Speciality Degrees</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {PG_DEGREES_MAP[ugDegree].map(deg => (
+                    <label key={deg} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={otherDegrees.includes(deg)} 
+                        onChange={e => {
+                          if (e.target.checked) setOtherDegrees(prev => [...prev, deg]);
+                          else setOtherDegrees(prev => prev.filter(d => d !== deg));
+                        }} 
+                      />
+                      {deg}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label">Years of Experience</label>
+              <input className="input" type="number" min="0" max="100" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} placeholder="e.g. 15" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Languages Spoken</label>
+              <MultiSelectDropdown options={ALL_LANGUAGES} selected={languages} onChange={setLanguages} placeholder="Select Languages..." />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">Professional Bio</label>
+              <textarea className="input" style={{ minHeight: 100, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Brief description of your expertise and background..." />
+            </div>
+
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">E-Signature</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -284,36 +465,161 @@ export function DoctorProfilePage() {
           <div className="card-header"><h2 className="card-title">Weekly Schedule</h2></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             {DAYS.map((day) => (
-              <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <input
-                  type="checkbox"
-                  id={`day-${day}`}
-                  checked={schedule[day].active}
-                  onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], active: e.target.checked } }))}
-                />
-                <label htmlFor={`day-${day}`} style={{ width: 32, fontWeight: 600, cursor: 'pointer' }}>{day}</label>
-                <input
-                  className="input"
-                  type="time"
-                  value={schedule[day].start}
-                  disabled={!schedule[day].active}
-                  style={{ width: 120 }}
-                  onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], start: e.target.value } }))}
-                />
-                <span className="text-muted">to</span>
-                <input
-                  className="input"
-                  type="time"
-                  value={schedule[day].end}
-                  disabled={!schedule[day].active}
-                  style={{ width: 120 }}
-                  onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], end: e.target.value } }))}
-                />
+              <div key={day} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 0', borderBottom: '1px solid var(--border)', opacity: schedule[day].active ? 1 : 0.6, transition: 'opacity 0.2s' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, width: 80, fontWeight: 600, cursor: 'pointer', fontSize: '1.05rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={schedule[day].active}
+                      onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], active: e.target.checked } }))}
+                      style={{ width: 18, height: 18 }}
+                    />
+                    {day}
+                  </label>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', width: 50 }}>Shift</div>
+                    <input
+                      className="input"
+                      type="time"
+                      value={schedule[day].start}
+                      disabled={!schedule[day].active}
+                      style={{ width: 110, padding: '6px 10px' }}
+                      onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], start: e.target.value } }))}
+                    />
+                    <span className="text-muted" style={{ fontSize: '0.9rem' }}>to</span>
+                    <input
+                      className="input"
+                      type="time"
+                      value={schedule[day].end}
+                      disabled={!schedule[day].active}
+                      style={{ width: 110, padding: '6px 10px' }}
+                      onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], end: e.target.value } }))}
+                    />
+                  </div>
+                  
+                  {schedule[day].active && !schedule[day].hasBreak && (
+                    <button 
+                      className="btn btn-ghost btn-sm" 
+                      style={{ color: 'var(--primary)', fontWeight: 500 }}
+                      onClick={() => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], hasBreak: true } }))}
+                    >
+                      + Add Break
+                    </button>
+                  )}
+                </div>
+                
+                {schedule[day].active && schedule[day].hasBreak && (
+                  <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 108 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface-raised)', padding: '8px 16px', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', width: 50 }}>Break</div>
+                      <input
+                        className="input"
+                        type="time"
+                        value={schedule[day].breakStart}
+                        style={{ width: 110, padding: '6px 10px' }}
+                        onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], breakStart: e.target.value } }))}
+                      />
+                      <span className="text-muted" style={{ fontSize: '0.9rem' }}>to</span>
+                      <input
+                        className="input"
+                        type="time"
+                        value={schedule[day].breakEnd}
+                        style={{ width: 110, padding: '6px 10px' }}
+                        onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], breakEnd: e.target.value } }))}
+                      />
+                      <button 
+                        className="btn btn-ghost btn-sm" 
+                        style={{ padding: 4, minHeight: 'auto', color: 'var(--error)', marginLeft: 8 }} 
+                        onClick={() => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], hasBreak: false } }))}
+                        title="Remove Break"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button className={`btn btn-primary ${saving ? 'loading' : ''}`} onClick={handleSaveSchedule} disabled={saving}>Save Schedule</button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'integrations' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* UPI Settings */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">UPI Payment Setup</h2>
+              <p className="text-muted text-sm">Patients will see these details during the booking process to make payments.</p>
+            </div>
+            <div style={{ padding: 24 }}>
+              {upiSuccess && <div style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: 12, borderRadius: 8, marginBottom: 16 }}>{upiSuccess}</div>}
+              <div className="form-group">
+                <label className="form-label">UPI ID / VPA</label>
+                <input type="text" className="input" placeholder="e.g. yourname@okicici" value={upiId} onChange={e => setUpiId(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">UPI QR Code Image</label>
+                <input type="file" accept="image/*" className="input" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                      alert('File size must be less than 2MB');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setUpiQrUrl(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+                <div className="form-hint">Upload your QR code image (max 2MB). It will be saved securely.</div>
+              </div>
+              {upiQrUrl && (
+                <div style={{ marginTop: 16, border: '1px solid var(--border)', padding: 16, borderRadius: 8, display: 'inline-block' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>QR Preview:</div>
+                  <img src={upiQrUrl} alt="UPI QR Preview" style={{ width: 150, height: 150, objectFit: 'contain' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
+                </div>
+              )}
+              <div style={{ marginTop: 24 }}>
+                <button className={`btn btn-primary ${savingUpi ? 'loading' : ''}`} onClick={handleSaveUpi} disabled={savingUpi}>Save UPI Details</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Google Calendar */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Google Calendar Integration</h2>
+              <p className="text-muted text-sm">Connect your Google account to automatically create calendar events and generate Google Meet links for online consultations.</p>
+            </div>
+            <div style={{ padding: 24 }}>
+              {new URLSearchParams(window.location.search).get('google') === 'success' && (
+                <div style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: 12, borderRadius: 8, marginBottom: 16 }}>Google Calendar connected successfully!</div>
+              )}
+              {new URLSearchParams(window.location.search).get('google') === 'failed' && (
+                <div style={{ background: 'var(--error-bg)', color: 'var(--error)', padding: 12, borderRadius: 8, marginBottom: 16 }}>Failed to connect Google Calendar. Please try again.</div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-raised)' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 4 }}>Google Account</div>
+                  <div style={{ fontSize: '0.85rem', color: googleConnected ? 'var(--success)' : 'var(--text-secondary)' }}>
+                    {googleConnected ? '✓ Connected to Google Calendar' : 'Not connected'}
+                  </div>
+                </div>
+                {googleConnected ? (
+                  <button className={`btn btn-secondary btn-sm ${googleLoading ? 'loading' : ''}`} onClick={handleDisconnectGoogle} disabled={googleLoading}>Disconnect</button>
+                ) : (
+                  <button className={`btn btn-primary btn-sm ${googleLoading ? 'loading' : ''}`} onClick={handleConnectGoogle} disabled={googleLoading}>Connect Google Account</button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

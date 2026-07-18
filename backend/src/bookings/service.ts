@@ -7,6 +7,7 @@
 
 import { db } from '../shared/database';
 import { NotificationService } from '../shared/notifications';
+import { getVisibleMeetLink } from '../shared/utils/meetLogic';
 
 interface CreateBookingData {
   patientId: string;
@@ -263,12 +264,12 @@ export const BookingsService = {
        ORDER BY a.slot_date DESC, a.slot_time DESC`,
       [patientId]
     );
-    return rows;
+    return rows.map(r => ({ ...r, meet_link: getVisibleMeetLink(r.meet_link, r.slot_date, r.slot_time) }));
   },
 
   /** Get a single appointment by ID */
   async getById(appointmentId: string) {
-    return db.queryOne(
+    const appt = await db.queryOne<any>(
       `SELECT
          a.id, a.status, a.slot_date, a.slot_time,
          a.chief_complaint, a.complaint_description as description, ct.type as consultation_type, a.meet_link,
@@ -285,6 +286,10 @@ export const BookingsService = {
        WHERE a.id = $1`,
       [appointmentId]
     );
+    if (appt) {
+      appt.meet_link = getVisibleMeetLink(appt.meet_link, appt.slot_date, appt.slot_time);
+    }
+    return appt;
   },
 
   /** Cancel an appointment */

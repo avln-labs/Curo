@@ -36,32 +36,32 @@ const SlideWrapper = ({ children, slide, onNext, onPrev, step, totalSteps }) => 
   const isIntro = slide.type === 'intro';
 
   return (
-    <div className="flex h-screen bg-stone-50 text-stone-900 font-sans overflow-hidden relative">
+    <div className="flex flex-col md:flex-row min-h-[100dvh] md:h-screen bg-stone-50 text-stone-900 font-sans overflow-x-hidden md:overflow-hidden relative">
       <style>{animationStyles}</style>
       
       {/* Background decoration for intro slides */}
       {isIntro && (
         <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
-           <div className="w-[800px] h-[800px] bg-teal-600 rounded-full blur-[150px]"></div>
+           <div className="w-[400px] h-[400px] md:w-[800px] md:h-[800px] bg-teal-600 rounded-full blur-[100px] md:blur-[150px]"></div>
         </div>
       )}
 
       {isIntro ? (
         // Full Screen Intro Layout (Light Theme)
-        <div key={`intro-${step}`} className="w-full flex flex-col justify-center items-center p-12 relative z-10 text-center max-w-5xl mx-auto">
+        <div key={`intro-${step}`} className="w-full flex flex-col justify-center items-center p-6 md:p-12 relative z-10 text-center max-w-5xl mx-auto min-h-[100dvh] md:min-h-0 pt-20 pb-24 md:pt-12 md:pb-12">
           
           {/* RENDER VISUAL IF AVAILABLE */}
           {slide.visual && (
-            <div className="mb-14 animate-slide-up">
+            <div className="mb-8 md:mb-14 animate-slide-up scale-[0.6] md:scale-100 origin-center">
               {slide.visual}
             </div>
           )}
 
-          <div className="absolute top-10 left-10 text-teal-700 font-bold tracking-widest uppercase text-xs bg-teal-50 px-3 py-1 rounded-full animate-slide-up">
+          <div className="absolute top-6 left-6 md:top-10 md:left-10 text-teal-700 font-bold tracking-widest uppercase text-[10px] md:text-xs bg-teal-50 px-3 py-1 rounded-full animate-slide-up">
             The CURO Story
           </div>
-          <h1 className="text-5xl font-bold mb-8 text-stone-900 leading-tight animate-slide-up delay-100">{slide.title}</h1>
-          <div className="text-2xl text-stone-600 leading-relaxed space-y-6 animate-slide-up delay-200 max-w-4xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-6 md:mb-8 text-stone-900 leading-tight animate-slide-up delay-100">{slide.title}</h1>
+          <div className="text-lg md:text-2xl text-stone-600 leading-relaxed space-y-4 md:space-y-6 animate-slide-up delay-200 max-w-4xl mx-auto">
             {slide.content}
           </div>
         </div>
@@ -69,24 +69,24 @@ const SlideWrapper = ({ children, slide, onNext, onPrev, step, totalSteps }) => 
         // Split Screen Demo Layout (Light Theme)
         <>
           {/* Left Side: Explanations & Feature Callouts */}
-          <div className="w-[40%] p-10 flex flex-col justify-center border-r border-stone-200 relative bg-white overflow-y-auto z-10">
-            <div className="absolute top-10 left-10 text-teal-700 font-bold tracking-widest uppercase text-xs bg-teal-50 px-3 py-1 rounded-full">
+          <div className="w-full md:w-[40%] p-6 md:p-10 flex flex-col justify-center border-b md:border-b-0 md:border-r border-stone-200 relative bg-white md:overflow-y-auto z-10 pt-20 md:pt-10">
+            <div className="absolute top-6 left-6 md:top-10 md:left-10 text-teal-700 font-bold tracking-widest uppercase text-[10px] md:text-xs bg-teal-50 px-3 py-1 rounded-full">
               CURO Product Tour
             </div>
             
             {/* The key prop ensures the animations re-trigger on slide change */}
-            <div key={`desc-${step}`} className="my-auto mt-20">
-              <h1 className="text-3xl font-bold mb-8 text-stone-900 leading-tight animate-slide-up">{slide.title}</h1>
+            <div key={`desc-${step}`} className="my-auto mt-4 md:mt-20 mb-8 md:mb-20">
+              <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-stone-900 leading-tight animate-slide-up">{slide.title}</h1>
               
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {slide.features.map((feature, idx) => (
                   <div key={idx} className={`flex items-start bg-stone-50 p-4 rounded-xl border border-stone-200 animate-slide-up delay-${(idx + 1) * 100}`}>
-                    <div className="w-8 h-8 shrink-0 bg-teal-600 text-white font-bold rounded-full flex items-center justify-center shadow-sm mr-4 mt-1">
+                    <div className="w-8 h-8 shrink-0 bg-teal-600 text-white font-bold rounded-full flex items-center justify-center shadow-sm mr-4 mt-1 text-sm md:text-base">
                       {idx + 1}
                     </div>
                     <div>
-                      <h3 className="font-bold text-stone-900 text-lg mb-1">{feature.title}</h3>
-                      <p className="text-stone-600 text-sm leading-relaxed">{feature.desc}</p>
+                      <h3 className="font-bold text-stone-900 text-base md:text-lg mb-1">{feature.title}</h3>
+                      <p className="text-stone-600 text-xs md:text-sm leading-relaxed">{feature.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -95,8 +95,8 @@ const SlideWrapper = ({ children, slide, onNext, onPrev, step, totalSteps }) => 
           </div>
           
           {/* Right Side: Interactive Demo */}
-          <div className="w-[60%] bg-stone-100 flex items-center justify-center p-8 relative z-10">
-            <div className={`w-full ${slide.isMobileLayout ? 'max-w-sm h-[75vh] min-h-[600px] max-h-[800px]' : 'max-w-5xl h-[80vh]'} bg-white rounded-3xl shadow-xl overflow-hidden border border-stone-200 relative text-gray-900 flex flex-col transition-all duration-700 ease-in-out`}>
+          <div className="w-full md:w-[60%] bg-stone-100 flex items-center justify-center p-4 md:p-8 relative z-10 pb-24 md:pb-8">
+            <div className={`w-full ${slide.isMobileLayout ? 'max-w-sm h-[70vh] md:h-[75vh] min-h-[500px] md:min-h-[600px] max-h-[800px]' : 'max-w-5xl h-[60vh] md:h-[80vh] min-h-[400px] md:min-h-0'} bg-white rounded-3xl shadow-xl overflow-hidden border border-stone-200 relative text-gray-900 flex flex-col transition-all duration-700 ease-in-out`}>
               {/* Fade transition for the inner component */}
               <div key={`demo-${step}`} className="h-full flex flex-col animate-slide-up delay-100">
                 {children}
@@ -107,26 +107,26 @@ const SlideWrapper = ({ children, slide, onNext, onPrev, step, totalSteps }) => 
       )}
 
       {/* Navigation Controls (Always visible at bottom) */}
-      <div className={`absolute bottom-0 left-0 right-0 p-8 flex justify-between items-center z-20 ${isIntro ? '' : 'w-[40%] border-t border-stone-200 bg-white'}`}>
+      <div className={`fixed md:absolute bottom-0 left-0 right-0 p-4 md:p-8 flex justify-between items-center z-50 ${isIntro ? 'bg-white/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-t md:border-none border-stone-200' : 'w-full md:w-[40%] border-t border-stone-200 bg-white'}`}>
         <button 
           onClick={onPrev}
           disabled={step === 0}
-          className="flex items-center px-4 py-2 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium"
+          className="flex items-center px-3 py-2 md:px-4 md:py-2 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium text-sm md:text-base"
         >
-          <ChevronLeft className="w-5 h-5 mr-1" />
-          Previous
+          <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 mr-1" />
+          <span className="hidden sm:inline">Previous</span>
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-stone-500 font-mono text-sm">{step + 1} / {totalSteps}</span>
-          <span className="text-[10px] text-stone-400 mt-1 uppercase tracking-wider">Use Arrow Keys</span>
+          <span className="text-stone-500 font-mono text-xs md:text-sm font-medium">{step + 1} / {totalSteps}</span>
+          <span className="text-[9px] md:text-[10px] text-stone-400 mt-1 uppercase tracking-wider hidden md:block">Use Arrow Keys</span>
         </div>
         <button 
           onClick={onNext}
           disabled={step === totalSteps - 1}
-          className="flex items-center px-4 py-2 rounded-lg bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium shadow-sm"
+          className="flex items-center px-3 py-2 md:px-4 md:py-2 rounded-lg bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium shadow-sm text-sm md:text-base"
         >
-          Next
-          <ChevronRight className="w-5 h-5 ml-1" />
+          <span className="hidden sm:inline">Next</span>
+          <ChevronRight className="w-4 h-4 md:w-5 md:h-5 sm:ml-1" />
         </button>
       </div>
     </div>
@@ -163,7 +163,7 @@ const SlideDoctorSetup = () => (
         <div className="relative mt-8">
           <Badge num="2" />
           <h3 className="font-semibold text-gray-900 mb-4 text-lg border-b border-stone-100 pb-2">Consultation Types</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="border border-stone-200 rounded-xl p-5 bg-white shadow-sm flex flex-col items-start">
               <div className="bg-teal-50 text-teal-700 p-2 rounded-lg mb-3">
                 <Video className="w-5 h-5" />
@@ -226,13 +226,13 @@ const SlideDashboard = () => (
     </div>
     <div className="flex-1 bg-white p-6 overflow-y-auto">
       
-      <div className="relative inline-block mb-8 mt-2">
+      <div className="relative inline-block mb-8 mt-2 w-full md:w-auto">
         <Badge num="1" />
-        <div className="bg-stone-50 px-6 py-3 rounded-xl shadow-sm border border-stone-200 inline-flex space-x-6 text-sm font-medium">
+        <div className="bg-stone-50 p-4 md:px-6 md:py-3 rounded-xl shadow-sm border border-stone-200 flex flex-col md:inline-flex md:flex-row space-y-2 md:space-y-0 md:space-x-6 text-sm font-medium w-full md:w-auto">
           <div>14 Appointments Today</div>
-          <div className="text-stone-300">|</div>
+          <div className="hidden md:block text-stone-300">|</div>
           <div>₹8,400 Collected</div>
-          <div className="text-stone-300">|</div>
+          <div className="hidden md:block text-stone-300">|</div>
           <div className="text-amber-600">2 Pending Payments</div>
         </div>
       </div>
@@ -310,8 +310,8 @@ const SlideDoctorDatabase = () => (
 
       <div className="relative">
         <Badge num="2" />
-        <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm">
+        <div className="border border-stone-200 rounded-xl overflow-x-auto shadow-sm">
+          <table className="w-full text-left text-sm min-w-[600px]">
             <thead className="bg-stone-50 border-b border-stone-200 text-gray-600">
               <tr>
                 <th className="p-4 font-medium">Patient Name</th>
@@ -346,8 +346,8 @@ const SlideDoctorDatabase = () => (
 );
 
 const SlideConsultation = () => (
-  <div className="flex h-full bg-white">
-    <div className="w-1/3 border-r border-stone-200 bg-stone-50 p-6 flex flex-col relative">
+  <div className="flex flex-col md:flex-row h-full bg-white overflow-y-auto md:overflow-hidden">
+    <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-stone-200 bg-stone-50 p-6 flex flex-col relative shrink-0 md:shrink">
       <Badge num="1" />
       <div className="mb-6">
         <h2 className="text-xl font-bold">Rohan Kumar</h2>
@@ -355,7 +355,7 @@ const SlideConsultation = () => (
       </div>
       
       <h3 className="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Patient Timeline</h3>
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+      <div className="md:flex-1 overflow-y-auto space-y-4 pr-2 max-h-[300px] md:max-h-full">
         <div className="relative pl-4 border-l-2 border-stone-200">
           <div className="absolute w-3 h-3 bg-stone-300 rounded-full -left-[7px] top-1"></div>
           <div className="text-xs text-gray-500 mb-1">Today</div>
@@ -375,7 +375,7 @@ const SlideConsultation = () => (
       </div>
     </div>
     
-    <div className="w-2/3 p-6 flex flex-col">
+    <div className="w-full md:w-2/3 p-6 flex flex-col shrink-0 md:shrink">
       <div className="relative mb-6">
         <Badge num="2" />
         <div className="bg-teal-50 border border-teal-100 rounded-xl p-5">
@@ -426,8 +426,8 @@ const SlidePrescription = () => (
       <div className="relative mb-8">
         <Badge num="2" />
         <label className="block text-sm font-medium text-gray-700 mb-2">Medications</label>
-        <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm">
+        <div className="border border-stone-200 rounded-xl overflow-x-auto shadow-sm">
+          <table className="w-full text-left text-sm min-w-[500px]">
             <thead className="bg-stone-50 border-b border-stone-200 text-gray-600">
               <tr>
                 <th className="p-3 font-medium">Drug Name</th>

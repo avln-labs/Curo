@@ -48,6 +48,18 @@ function daysUntilContactChange(changedAt: string | null, cooldownDays = 14): nu
   return Math.ceil(cooldownDays - daysSince);
 }
 
+function calculateAge(dob: string | null): number | null {
+  if (!dob) return null;
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 export function PatientProfilePage() {
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,6 +197,7 @@ export function PatientProfilePage() {
             </h1>
             <p className="page-subtitle">
               CURO Patient · Member since {new Date(profile.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+              {profile.date_of_birth && ` · Age: ${calculateAge(profile.date_of_birth)} yrs`}
             </p>
           </div>
         </div>

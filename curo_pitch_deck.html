@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CURO - Pitch Deck</title>
+
+    <!-- Google Fonts: Archivo (Display) and Nunito (Body) -->
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;800&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Swiss Modern)
+           =========================================== */
+        :root {
+            --stage-bg: #f5f5f5;
+            --slide-bg: #ffffff;
+            --text-main: #000000;
+            --text-secondary: #666666;
+            --accent: #ff3300;
+            
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           =========================================== */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg, #fff);
+            font-family: var(--font-body);
+            color: var(--text-main);
+        }
+
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        @media print {
+            @page {
+                size: 1920px 1080px;
+                margin: 0;
+            }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            html, body { width: 1920px; height: auto !important; overflow: visible !important; background: #fff; margin: 0; padding: 0; }
+            .deck-viewport { position: static; overflow: visible !important; background: #fff; width: 1920px; height: auto !important; }
+            .deck-stage { position: static; width: 1920px; height: auto !important; transform: none !important; background: none; overflow: visible !important; }
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+            .slide:last-child { break-after: auto; page-break-after: auto; }
+            .deck-controls { display: none !important; }
+            .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           SWISS MODERN - LAYOUT & TYPOGRAPHY
+           =========================================== */
+        
+        /* Typography */
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; letter-spacing: -2px; margin: 0; }
+        h1 { font-size: 140px; line-height: 1.1; }
+        h2 { font-size: 80px; margin-bottom: 40px; }
+        h3 { font-size: 40px; margin-bottom: 20px; }
+        p, li { font-size: 32px; line-height: 1.6; color: var(--text-secondary); }
+        ul { padding-left: 40px; margin-bottom: 30px; }
+        li { margin-bottom: 20px; }
+
+        /* Grid Background (Architectural feel) */
+        .grid-bg {
+            position: absolute;
+            inset: 60px;
+            border: 2px solid var(--text-main);
+            background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Standard Layouts */
+        .layout-center {
+            position: absolute; inset: 120px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        
+        .layout-split {
+            position: absolute; inset: 120px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 80px;
+            align-items: center;
+        }
+
+        .layout-3-col {
+            position: absolute; inset: 120px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .cols-3 {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; margin-top: 60px;
+        }
+        .cols-2 {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px;
+        }
+
+        /* Design Accents */
+        .kicker {
+            font-family: var(--font-display);
+            font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent); margin-bottom: 40px;
+            display: flex; align-items: center; gap: 20px;
+        }
+        .kicker::before { content: ""; display: inline-block; width: 40px; height: 4px; background: var(--accent); }
+        
+        .accent-box-tr {
+            position: absolute; top: 58px; right: 58px;
+            width: 120px; height: 120px; background: var(--accent);
+        }
+
+        .stat-card {
+            background: #fff; border: 2px solid #000; padding: 40px;
+            position: relative;
+        }
+        .stat-card::before {
+            content: ""; position: absolute; top: -2px; left: -2px; width: 40px; height: 4px; background: var(--accent);
+        }
+        .stat-big { font-family: var(--font-display); font-size: 96px; color: var(--accent); line-height: 1; margin-bottom: 10px; }
+        
+        .nav-footer {
+            position: absolute; bottom: 120px; left: 120px; right: 120px;
+            display: flex; justify-content: space-between;
+            font-family: var(--font-display); font-size: 20px; font-weight: 800;
+            color: #999; border-top: 2px solid #eee; padding-top: 20px;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; }
+
+        /* Inline Editing */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+        .edit-toggle { opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 10001; position: fixed; top: 20px; left: 20px; font-size: 24px; background: #fff; border: 2px solid #000; padding: 10px; cursor: pointer; }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+    </style>
+</head>
+<body>
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+            
+            <!-- Slide 1: Title -->
+            <section class="slide active">
+                <div class="grid-bg"></div>
+                <div class="accent-box-tr"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">Investor Pitch Deck</div>
+                    <h1 class="reveal">CURO</h1>
+                    <p class="reveal" style="font-size: 48px; margin-top: 20px;">The Frictionless Clinical Operating System.</p>
+                </div>
+            </section>
+
+            <!-- Slide 2: The Invisible Digital Divide -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">01 / The Market Problem</div>
+                    <h2 class="reveal">The Invisible Digital Divide</h2>
+                    <p class="reveal" style="font-size: 40px; max-width: 1400px; margin-bottom: 40px;">
+                        Most healthcare software is built for two extremes. Independent, mobile physicians are left stranded in the middle.
+                    </p>
+                    <div class="cols-2 reveal">
+                        <div class="stat-card">
+                            <h3>Tier 1: Heavy ERPs</h3>
+                            <p>Massive, expensive systems built for hospital compliance and admin tracking, not speed.</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Tier 2: Discovery Platforms</h3>
+                            <p>Aggregators built for marketing and discoverability, treating the clinic like a listing instead of a business.</p>
+                        </div>
+                    </div>
+                    <div class="nav-footer">
+                        <span>CURO</span><span>02</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: Reality of Private Practice -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-split">
+                    <div>
+                        <div class="kicker reveal">02 / The Current Behavior</div>
+                        <h2 class="reveal">The Reality of Private Practice</h2>
+                        <p class="reveal">Because existing systems are bloated or ill-suited for daily operations, doctors use them just to get patients in the door.</p>
+                        <p class="reveal">Once inside, they revert to manual pen-and-paper, fragmented spreadsheets, and chaotic WhatsApp threads to actually run their clinic.</p>
+                    </div>
+                    <div class="stat-card reveal" style="background: var(--text-main); color: #fff;">
+                        <h3 style="color: #fff; margin-bottom: 30px;">The Result</h3>
+                        <p style="color: #aaa; margin: 0;">2 hours lost every day doing manual data entry. Fragmented patient histories. Chasing patients for payments via screenshots.</p>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>03</span>
+                </div>
+            </section>
+            
+            <!-- Slide 4: The 60-Second Rule -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="accent-box-tr"></div>
+                <div class="layout-split">
+                    <div>
+                        <div class="kicker reveal">03 / The Threshold</div>
+                        <h2 class="reveal">The 60-Second Rule</h2>
+                        <p class="reveal">Independent doctors face a massive time crunch. Time is their ultimate currency.</p>
+                        <p class="reveal">If software takes more than 60 seconds to write a prescription or log a diagnosis, <strong>doctors will abandon it.</strong></p>
+                    </div>
+                    <div class="stat-card reveal" style="border-color: var(--accent); text-align: center;">
+                        <div class="stat-big">&lt;60s</div>
+                        <h3>The Abandonment Metric</h3>
+                        <p>We built CURO to respect the doctor's time, transforming software from a chore back into a clinical utility.</p>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>04</span>
+                </div>
+            </section>
+
+            <!-- Slide 5: The Multi-Clinic Context Switch -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">04 / The Lifestyle</div>
+                    <h2 class="reveal">The Multi-Clinic Context Switch</h2>
+                    <p class="reveal" style="font-size: 40px; max-width: 1400px; margin-bottom: 40px;">
+                        A doctor might be at Clinic A in the morning, and Clinic B in the evening.
+                    </p>
+                    <p class="reveal" style="font-size: 40px; max-width: 1400px;">
+                        They desperately need their patient data to follow them securely on a lightweight web app, without needing to sync with a specific clinic's local, legacy server.
+                    </p>
+                    <div class="nav-footer">
+                        <span>CURO</span><span>05</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: Introducing CURO -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center" style="text-align: center;">
+                    <div class="kicker reveal" style="justify-content: center;">05 / The Solution</div>
+                    <h2 class="reveal" style="font-size: 100px; color: var(--accent);">Meet CURO</h2>
+                    <p class="reveal" style="font-size: 40px; margin: 0 auto; max-width: 1200px;">
+                        We stripped away the enterprise bloat. Instead of another rigid management database, CURO focuses entirely on high-velocity, essential workflows: rapid charting, seamless scheduling, and lightweight history tracking.
+                    </p>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>06</span>
+                </div>
+            </section>
+            
+            <!-- Slide 7: Doctor Experience -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">06 / Doctor Experience</div>
+                    <h2 class="reveal">Command Center for the Clinic</h2>
+                    <div class="cols-3 reveal">
+                        <div class="stat-card">
+                            <h3>Instant Payments</h3>
+                            <p>Link a bank account once. All patient payments go directly to the doctor without manual verification.</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Flexible Slots</h3>
+                            <p>Set different fees for online video consults vs in-clinic visits. Video links are generated automatically.</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Clear Scheduling</h3>
+                            <p>A simple, color-coded list of today's appointments. Scan the entire day without clicking anywhere.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>07</span>
+                </div>
+            </section>
+
+            <!-- Slide 8: Zero Memory Burden -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="accent-box-tr"></div>
+                <div class="layout-split">
+                    <div>
+                        <div class="kicker reveal">07 / The AI Advantage</div>
+                        <h2 class="reveal">Zero Memory Burden</h2>
+                        <p class="reveal">A doctor should never waste time trying to remember a patient's history.</p>
+                        <p class="reveal">With CURO, the burden of memory is entirely removed. Before the patient even walks in, the doctor is handed an instant AI summary of past diagnoses and newly uploaded reports.</p>
+                    </div>
+                    <div class="stat-card reveal" style="background: var(--text-main); color: #fff;">
+                        <h3 style="color: var(--accent);">Context Before Consultation</h3>
+                        <p style="color: #aaa;">"Patient presents with recurring fever. History of similar symptoms in Apr 2025. Previously prescribed Paracetamol."</p>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>08</span>
+                </div>
+            </section>
+
+            <!-- Slide 9: Writing Prescriptions -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-split">
+                    <div>
+                        <div class="kicker reveal">08 / Core Loop</div>
+                        <h2 class="reveal">The Zero-Type Consultation</h2>
+                        <ul class="reveal">
+                            <li><strong>Everything on One Screen:</strong> No opening five different windows to add medicines, lab tests, and advice.</li>
+                            <li><strong>Fast Typing:</strong> Auto-completes medicine names and makes it incredibly easy to quickly type out dosages.</li>
+                            <li><strong>One-Click Delivery:</strong> Generate a professional PDF and send it straight to the patient's WhatsApp instantly.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>09</span>
+                </div>
+            </section>
+            
+            <!-- Slide 10: Patient Experience -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">09 / Patient Experience</div>
+                    <h2 class="reveal">No Apps to Download. Ever.</h2>
+                    <div class="cols-2 reveal">
+                        <div class="stat-card">
+                            <h3>A Single Link</h3>
+                            <p>Doctors simply put their CURO link in their WhatsApp bio or Instagram profile (curo.me/dr-name).</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Desk QR Codes</h3>
+                            <p>Patients in the waiting room just point their smartphone camera at a QR code to instantly join the digital queue.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>10</span>
+                </div>
+            </section>
+
+            <!-- Slide 11: Patient Journey -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">10 / The Patient Journey</div>
+                    <h2 class="reveal">Frictionless from Booking to Prescription</h2>
+                    <div class="cols-3 reveal">
+                        <div class="stat-card">
+                            <h3>1. Zero Passwords</h3>
+                            <p>Patients simply type their phone number to enter. A secure OTP gets them back to the booking screen in seconds.</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>2. Upfront Payments</h3>
+                            <p>They lock in the slot by paying immediately through Razorpay/UPI. No chasing payments.</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>3. Secure Sharing</h3>
+                            <p>Patients get detailed prescriptions on a timeline. They can quickly download or share their records with other specialists.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>11</span>
+                </div>
+            </section>
+
+            <!-- Slide 12: In Simple Terms -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="accent-box-tr"></div>
+                <div class="layout-center">
+                    <div class="kicker reveal">11 / In Simple Terms</div>
+                    <h2 class="reveal">The Value Proposition</h2>
+                    
+                    <ul class="reveal" style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 40px;">
+                            <strong>Doctors forget patients.</strong> 
+                            <span style="color: var(--accent); display: block; font-size: 36px;">→ CURO's AI remembers them instantly.</span>
+                        </li>
+                        <li style="margin-bottom: 40px;">
+                            <strong>Chasing patients for payments.</strong> 
+                            <span style="color: var(--accent); display: block; font-size: 36px;">→ Patients pay upfront to book a slot.</span>
+                        </li>
+                        <li style="margin-bottom: 40px;">
+                            <strong>Clunky hospital software.</strong> 
+                            <span style="color: var(--accent); display: block; font-size: 36px;">→ Write a prescription in under 60 seconds.</span>
+                        </li>
+                        <li>
+                            <strong>Patients hate downloading apps.</strong> 
+                            <span style="color: var(--accent); display: block; font-size: 36px;">→ A single link opens directly in their browser.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>12</span>
+                </div>
+            </section>
+            
+            <!-- Slide 13: Business Opportunity -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-split">
+                    <div>
+                        <div class="kicker reveal">12 / The Opportunity</div>
+                        <h2 class="reveal">A $300M ARR Market</h2>
+                        <ul class="reveal">
+                            <li><strong>Fragmented Landscape:</strong> Over 575K clinics in India and 5K+ in the UAE dominated by solo practitioners.</li>
+                            <li><strong>Dual Revenue Model:</strong> Highly scalable SaaS subscriptions + a flat transaction fee on every routed payment.</li>
+                            <li><strong>Deep Lock-in:</strong> Once a doctor's entire patient history and automated workflow is on CURO, they don't leave.</li>
+                        </ul>
+                    </div>
+                    <div class="stat-card reveal" style="border-color: var(--accent); text-align: center;">
+                        <div class="stat-big">600K</div>
+                        <h3>Target Clinics</h3>
+                        <p>Across India & GCC markets ripe for vertical software disruption.</p>
+                    </div>
+                </div>
+                <div class="nav-footer">
+                    <span>CURO</span><span>13</span>
+                </div>
+            </section>
+
+            <!-- Slide 14: Final Verdict -->
+            <section class="slide">
+                <div class="grid-bg"></div>
+                <div class="layout-center" style="text-align: center;">
+                    <div class="kicker reveal" style="justify-content: center;">13 / The Future</div>
+                    <h2 class="reveal" style="font-size: 120px;">Join <span style="color: var(--accent);">CURO</span></h2>
+                    <p class="reveal" style="max-width: 1200px; margin: 0 auto; font-size: 36px;">
+                        The vertical SaaS playbook applied to fragmented healthcare is proven. The addition of LLMs changes the UI paradigm from "data entry" to "data approval." 
+                        <br><br>Let's build the financial and operational backbone for independent doctors.
+                    </p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Inline Editing Elements -->
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.stage = document.getElementById('deckStage');
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.showSlide(0);
+                
+                // Expose active state for editor
+                this.isActive = false;
+            }
+
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.activeElement.getAttribute('contenteditable')) return;
+                    if (['ArrowRight', 'ArrowDown', 'Space', 'PageDown'].includes(e.code) || e.code === 'Space') {
+                        this.showSlide(this.currentSlide + 1);
+                    } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.code)) {
+                        this.showSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let touchStartX = 0;
+                document.addEventListener('touchstart', e => {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, {passive: true});
+                document.addEventListener('touchend', e => {
+                    const touchEndX = e.changedTouches[0].screenX;
+                    if (touchEndX < touchStartX - 50) this.showSlide(this.currentSlide + 1);
+                    if (touchEndX > touchStartX + 50) this.showSlide(this.currentSlide - 1);
+                }, {passive: true});
+            }
+
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                this.slides.forEach((slide, i) => {
+                    slide.classList.toggle('active', i === this.currentSlide);
+                    slide.classList.toggle('visible', i === this.currentSlide);
+                });
+            }
+        }
+
+        const presentation = new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING LOGIC
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                document.querySelectorAll('h1, h2, h3, p, li, span, .stat-big, .kicker, strong').forEach(el => {
+                    if (this.isActive) {
+                        el.setAttribute('contenteditable', 'true');
+                        el.style.outline = '1px dashed #ff3300';
+                    } else {
+                        el.removeAttribute('contenteditable');
+                        el.style.outline = 'none';
+                    }
+                });
+            }
+        };
+
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                editor.toggleEditMode();
+            }
+        });
+    </script>
+</body>
+</html>

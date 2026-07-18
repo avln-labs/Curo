@@ -110,9 +110,46 @@ export function PreConsultSummary({ appointmentId }: { appointmentId: string }) 
       ) : summary ? (
         <>
           <div className="ai-summary-body">
-            {displayText.split('\n').filter(Boolean).map((line, i) => (
-              <p key={i} className={line.startsWith('⚠') ? 'ai-summary-alert' : undefined}>{line}</p>
-            ))}
+            {(() => {
+              const lines = displayText.split('\n').filter(Boolean);
+              const elements: React.ReactNode[] = [];
+              let currentList: React.ReactNode[] = [];
+
+              const flushList = () => {
+                if (currentList.length > 0) {
+                  elements.push(<ul key={`ul-${elements.length}`} className="ai-summary-list">{currentList}</ul>);
+                  currentList = [];
+                }
+              };
+
+              lines.forEach((line, i) => {
+                const trimmed = line.trim();
+                
+                if (trimmed.startsWith('### ')) {
+                  flushList();
+                  const content = trimmed.replace('### ', '');
+                  const isFacts = content.toLowerCase().includes('known facts');
+                  elements.push(
+                    <h4 key={i} className={`ai-summary-heading ${isFacts ? 'ai-heading-facts' : 'ai-heading-implications'}`}>
+                      {isFacts ? '✓ Known Facts' : '💡 Possible Implications'}
+                    </h4>
+                  );
+                } else if (trimmed.startsWith('- ')) {
+                  const content = trimmed.replace('- ', '');
+                  const parts = content.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                    if (part.startsWith('**') && part.endsWith('**')) return <strong key={j}>{part.slice(2, -2)}</strong>;
+                    return part;
+                  });
+                  currentList.push(<li key={i}>{parts}</li>);
+                } else {
+                  flushList();
+                  elements.push(<p key={i} className={trimmed.startsWith('⚠') ? 'ai-summary-alert' : undefined}>{trimmed}</p>);
+                }
+              });
+              
+              flushList();
+              return elements;
+            })()}
           </div>
           <div className="ai-summary-footer">
             {summary.editedSummary && <span className="badge badge-info">Edited by you</span>}

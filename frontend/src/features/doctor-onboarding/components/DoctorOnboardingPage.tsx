@@ -1,49 +1,72 @@
-/**
- * DoctorOnboardingPage — wired to backend API
- *
- * Steps:
- *   1. Clinic Details  → POST /doctors/onboarding/profile
- *   2. Consultation Fees → POST /doctors/onboarding/fees
- *   3. Weekly Schedule → POST /doctors/onboarding/schedule
- *   4. Payment Setup (info only — Razorpay Phase 3)
- *
- * On mount: loads existing profile from GET /doctors/profile to restore progress.
- * If onboarding_step >= 1 and status is 'pending': shows read-only verification banner.
- */
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { doctorApi } from '../../../shared/api';
+import '../../auth/landing.css'; 
 
-type Step = 1 | 2 | 3 | 4;
-
-const STEPS = [
-  { n: 1, label: 'Clinic Details' },
-  { n: 2, label: 'Fees' },
-  { n: 3, label: 'Schedule' },
-  { n: 4, label: 'Payment' },
-];
+type Step = 1 | 2 | 3 | 4 | 5;
 
 const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function Stepper({ current, maxDone }: { current: Step; maxDone: number }) {
+const PG_DEGREES_MAP: Record<string, string[]> = {
+  'MBBS': ['MD', 'MS', 'DNB', 'DM', 'MCh', 'Fellowship', 'Diploma'],
+  'BDS': ['MDS', 'Fellowship', 'Diploma'],
+  'BAMS': ['MD (Ayurveda)', 'MS (Ayurveda)', 'Diploma'],
+  'BHMS': ['MD (Homeopathy)', 'Diploma']
+};
+
+const ALL_LANGUAGES = ['English', 'Hindi', 'Kannada', 'Tamil', 'Telugu', 'Malayalam', 'Marathi', 'Bengali'];
+
+function MultiSelectDropdown({ options, selected, onChange, placeholder }: { options: string[], selected: string[], onChange: (val: string[]) => void, placeholder: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="stepper">
-      {STEPS.map((s, i) => (
-        <div key={s.n} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <div
-            className={`step ${current === s.n ? 'active' : maxDone >= s.n ? 'done' : ''}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <div className="step-bubble">{maxDone >= s.n && current !== s.n ? '✓' : s.n}</div>
-            <span className="step-label">{s.label}</span>
-          </div>
-          {i < STEPS.length - 1 && (
-            <div className={`step-line ${maxDone > s.n ? 'done' : ''}`} style={{ flex: 1, minWidth: 16 }} />
-          )}
+    <div style={{ position: 'relative', marginBottom: 16 }}>
+      <div 
+        className="auth-input" 
+        style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 48, alignItems: 'center' }}
+        onClick={() => setOpen(!open)}
+      >
+        {selected.length === 0 && <span style={{ color: 'var(--text-tertiary)' }}>{placeholder}</span>}
+        {selected.map(s => (
+          <span key={s} style={{ background: 'var(--primary-muted)', color: 'var(--primary)', padding: '4px 12px', borderRadius: 16, fontSize: '0.85rem' }}>
+            {s} 
+            <span style={{ marginLeft: 6, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onChange(selected.filter(x => x !== s)); }}>×</span>
+          </span>
+        ))}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', zIndex: 10, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+          {options.map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+              <input type="checkbox" checked={selected.includes(opt)} onChange={(e) => {
+                if (e.target.checked) onChange([...selected, opt]);
+                else onChange(selected.filter(x => x !== opt));
+              }} />
+              <span style={{ fontSize: '0.95rem' }}>{opt}</span>
+            </label>
+          ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function MinimalStepper({ current, maxDone }: { current: Step; maxDone: number }) {
+  const steps = 5;
+  return (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 40, justifyContent: 'center' }}>
+      {Array.from({ length: steps }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            height: 4,
+            width: 40,
+            borderRadius: 2,
+            background: i + 1 <= current ? 'var(--primary)' : 'var(--border)',
+            transition: 'background 0.3s ease'
+          }}
+        />
       ))}
     </div>
   );
@@ -52,37 +75,29 @@ function Stepper({ current, maxDone }: { current: Step; maxDone: number }) {
 function VerificationBanner({ status, rejectionReason }: { status: string; rejectionReason?: string }) {
   if (status === 'verified') {
     return (
-      <div className="notice notice-success" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: '1.25rem' }}>✅</span>
-        <div>
-          <strong>Profile Verified</strong>
-          <div style={{ fontSize: '0.8125rem' }}>Your profile has been verified by Curo. Your booking link is now active.</div>
-        </div>
+      <div className="auth-box" style={{ textAlign: 'center', marginTop: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <h2 className="auth-h2">Profile Verified</h2>
+        <p className="auth-sub" style={{ marginBottom: 24 }}>Your profile has been verified by Curo. Your booking link is now active.</p>
       </div>
     );
   }
   if (status === 'rejected') {
     return (
-      <div className="notice" style={{ marginBottom: 20, background: 'var(--error-bg)', border: '1px solid #FECACA', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <span style={{ fontSize: '1.25rem' }}>❌</span>
-        <div>
-          <strong style={{ color: 'var(--error)' }}>Verification Rejected</strong>
-          {rejectionReason && (
-            <div style={{ fontSize: '0.8125rem', marginTop: 4 }}>Reason: {rejectionReason}</div>
-          )}
-          <div style={{ fontSize: '0.8125rem', marginTop: 4 }}>Please update your details below and resubmit.</div>
-        </div>
+      <div className="auth-box" style={{ textAlign: 'center', marginTop: 40, borderColor: 'var(--error)' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
+        <h2 className="auth-h2" style={{ color: 'var(--error)' }}>Verification Rejected</h2>
+        {rejectionReason && <p className="auth-sub" style={{ color: 'var(--error)' }}>Reason: {rejectionReason}</p>}
+        <p className="auth-sub" style={{ marginBottom: 24 }}>Please update your details and resubmit.</p>
       </div>
     );
   }
   if (status === 'pending') {
     return (
-      <div className="notice notice-info" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: '1.25rem' }}>⏳</span>
-        <div>
-          <strong>Awaiting Verification</strong>
-          <div style={{ fontSize: '0.8125rem' }}>Your profile is under review. This usually takes 1–2 business days. We'll notify you once approved.</div>
-        </div>
+      <div className="auth-box" style={{ textAlign: 'center', marginTop: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+        <h2 className="auth-h2">Awaiting Verification</h2>
+        <p className="auth-sub" style={{ marginBottom: 24 }}>Your profile is under review. This usually takes 1–2 business days. We'll notify you once approved.</p>
       </div>
     );
   }
@@ -103,24 +118,23 @@ export function DoctorOnboardingPage() {
 
   // ── Step 1 fields ────────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState(user?.name || '');
-  const [qualifications, setQualifications] = useState(''); // comma-separated
-  const [specialisations, setSpecialisations] = useState(''); // comma-separated
-  const [regNumber, setRegNumber] = useState('');
-  const [council, setCouncil] = useState('');
-  const [clinicName, setClinicName] = useState('');
-  const [city, setCity] = useState('');
-  const [bio, setBio] = useState('');
-  const [languages, setLanguages] = useState(''); // comma-separated
+  const [specialisations, setSpecialisations] = useState(''); 
   const [email, setEmail] = useState('');
 
   // ── Step 2 fields ────────────────────────────────────────────────────────────
+  const [experienceYears, setExperienceYears] = useState('');
+  const [ugDegree, setUgDegree] = useState('');
+  const [otherDegrees, setOtherDegrees] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [bio, setBio] = useState('');
+
+  // ── Step 3 fields ────────────────────────────────────────────────────────────
   const [onlineFee, setOnlineFee] = useState('');
   const [onlineDuration, setOnlineDuration] = useState('15');
   const [inPersonFee, setInPersonFee] = useState('');
   const [inPersonDuration, setInPersonDuration] = useState('20');
-  const [followUpFee, setFollowUpFee] = useState('');
 
-  // ── Step 3 fields ────────────────────────────────────────────────────────────
+  // ── Step 4 fields ────────────────────────────────────────────────────────────
   const [schedule, setSchedule] = useState<Record<string, { active: boolean; start: string; end: string }>>({
     Mon: { active: true, start: '09:00', end: '13:00' },
     Tue: { active: true, start: '09:00', end: '13:00' },
@@ -132,7 +146,7 @@ export function DoctorOnboardingPage() {
   const [bufferMins, setBufferMins] = useState('5');
   const [maxPatients, setMaxPatients] = useState('25');
 
-  // ── Step 4 fields ────────────────────────────────────────────────────────────
+  // ── Step 5 fields ────────────────────────────────────────────────────────────
   const [upiId, setUpiId] = useState('');
   const [upiQrUrl, setUpiQrUrl] = useState('');
 
@@ -147,107 +161,113 @@ export function DoctorOnboardingPage() {
       }
 
       const d = data.data as Record<string, any>;
-      // Restore fields
       if (d.full_name) setFullName(d.full_name);
-      if (d.qualifications?.length) setQualifications((d.qualifications as string[]).join(', '));
       if (d.specialisations?.length) setSpecialisations((d.specialisations as string[]).join(', '));
-      if (d.registration_number) setRegNumber(d.registration_number);
-      if (d.registration_council) setCouncil(d.registration_council);
-      if (d.clinic_name) setClinicName(d.clinic_name);
-      if (d.city) setCity(d.city);
-      if (d.bio) setBio(d.bio);
-      if (d.languages?.length) setLanguages((d.languages as string[]).join(', '));
       if (d.email) setEmail(d.email);
-      if (d.slug) setBookingUrl(`curo.app/${d.slug}`);
+      if (d.slug) setBookingUrl(`curo.app/dr/${d.slug}`);
       if (d.upi_id) setUpiId(d.upi_id);
       if (d.upi_qr_url) setUpiQrUrl(d.upi_qr_url);
+      
+      if (d.experience_years) setExperienceYears(String(d.experience_years));
+      if (d.languages?.length) setLanguages(d.languages as string[]);
+      if (d.bio) setBio(d.bio);
 
-      // Restore consultation type fees
+      if (d.qualifications?.length > 0) {
+        const quals = d.qualifications as string[];
+        const ugOptions = ['MBBS', 'BDS', 'BAMS', 'BHMS'];
+        const ug = quals.find(q => ugOptions.includes(q)) || quals[0] || '';
+        setUgDegree(ug);
+        const rest = quals.filter(q => q !== ug);
+        setOtherDegrees(rest);
+      }
+
       const consultationTypes = d.consultationTypes as any[] | undefined;
       if (consultationTypes) {
         const online = consultationTypes.find((c: any) => c.type === 'online');
         const inPerson = consultationTypes.find((c: any) => c.type === 'in_person');
-        const followUp = consultationTypes.find((c: any) => c.type === 'follow_up');
         if (online) { setOnlineFee(String(online.fee)); setOnlineDuration(String(online.duration_minutes)); }
         if (inPerson) { setInPersonFee(String(inPerson.fee)); setInPersonDuration(String(inPerson.duration_minutes)); }
-        if (followUp) setFollowUpFee(String(followUp.fee));
       }
 
-      // Restore verification state
       const vstatus = d.verification_status as string;
       setVerificationStatus(vstatus);
       if (d.rejection_reason) setRejectionReason(d.rejection_reason as string);
 
-      // Restore step progress
       const savedStep = d.onboarding_step as number;
       setMaxDone(savedStep);
-      if (savedStep >= 4) {
+      if (savedStep >= 5) {
         setSubmitted(true);
       } else if (savedStep >= 1) {
-        // Move to the next incomplete step
-        setStep((Math.min(savedStep + 1, 4)) as Step);
+        setStep((Math.min(savedStep + 1, 5)) as Step);
       }
-
       setLoading(false);
     }
     loadProfile();
   }, []);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
   function toArray(str: string): string[] {
     return str.split(',').map((s) => s.trim()).filter(Boolean);
   }
 
-  // ── Submit Step 1 ─────────────────────────────────────────────────────────────
-  async function handleSaveProfile() {
+  async function handleSaveStep1() {
     setError('');
     const specs = toArray(specialisations);
 
     if (!fullName.trim()) return setError('Full name is required.');
-    if (specs.length === 0) return setError('At least one specialisation is required.');
+    if (specs.length === 0) return setError('Specialisation is required.');
 
-    setSaving(true);
-    const { data, error: err } = await doctorApi.saveProfile({
-      fullName: fullName.trim(),
-      specialisations: specs,
-      email: email.trim() || undefined,
-    });
-    setSaving(false);
-
-    if (err || !data?.success) {
-      return setError(err || data?.message || 'Failed to save profile. Please try again.');
-    }
-
-    if (data.bookingUrl) setBookingUrl(data.bookingUrl);
-    mutateUser({ name: fullName.trim() });
-    setVerificationStatus('pending');
     setMaxDone((prev) => Math.max(prev, 1));
     setStep(2);
   }
 
-  // ── Submit Step 2 ─────────────────────────────────────────────────────────────
+  async function handleSaveStep2() {
+    setError('');
+    if (!ugDegree) return setError('Undergraduate Degree is required.');
+    
+    let allQuals = [ugDegree];
+    if (otherDegrees.length > 0) {
+      allQuals = [...allQuals, ...otherDegrees];
+    }
+
+    setSaving(true);
+    const { data, error: err } = await doctorApi.saveProfile({
+      fullName: fullName.trim(),
+      specialisations: toArray(specialisations),
+      email: email.trim() || undefined,
+      experienceYears: experienceYears ? Number(experienceYears) : undefined,
+      qualifications: allQuals,
+      languages: languages.length > 0 ? languages : undefined,
+      bio: bio.trim() || undefined
+    });
+    setSaving(false);
+
+    if (err || !data?.success) return setError(err || data?.message || 'Failed to save profile.');
+
+    if (data.bookingUrl) setBookingUrl(data.bookingUrl);
+    mutateUser({ name: fullName.trim() });
+    setVerificationStatus('pending');
+    setMaxDone((prev) => Math.max(prev, 2));
+    setStep(3);
+  }
+
   async function handleSaveFees() {
     setError('');
     const types = [];
     if (onlineFee) types.push({ type: 'online', fee: Number(onlineFee), durationMinutes: Number(onlineDuration), isActive: true });
     if (inPersonFee) types.push({ type: 'in_person', fee: Number(inPersonFee), durationMinutes: Number(inPersonDuration), isActive: true });
-    if (followUpFee) types.push({ type: 'follow_up', fee: Number(followUpFee), durationMinutes: 15, isActive: true });
 
-    if (types.length === 0) return setError('At least one consultation type with a fee is required.');
+    if (types.length === 0) return setError('At least one consultation fee is required.');
 
     setSaving(true);
     const { data, error: err } = await doctorApi.saveFees({ consultationTypes: types });
     setSaving(false);
 
-    if (err || !data?.success) {
-      return setError(err || data?.message || 'Failed to save fees. Please try again.');
-    }
+    if (err || !data?.success) return setError(err || data?.message || 'Failed to save fees.');
 
-    setMaxDone((prev) => Math.max(prev, 2));
-    setStep(3);
+    setMaxDone((prev) => Math.max(prev, 3));
+    setStep(4);
   }
 
-  // ── Submit Step 3 ─────────────────────────────────────────────────────────────
   async function handleSaveSchedule() {
     setError('');
     const activeDays = DAYS.filter((d) => schedule[d].active);
@@ -270,316 +290,232 @@ export function DoctorOnboardingPage() {
     });
     setSaving(false);
 
-    if (err || !data?.success) {
-      return setError(err || data?.message || 'Failed to save schedule. Please try again.');
-    }
+    if (err || !data?.success) return setError(err || data?.message || 'Failed to save schedule.');
 
-    setMaxDone((prev) => Math.max(prev, 3));
-    setStep(4);
+    setMaxDone((prev) => Math.max(prev, 4));
+    setStep(5);
   }
 
-  // ── Submit Step 4 (Payment Setup) ───────────────────────────────────────────
   async function handleComplete() {
     setSaving(true);
     setError('');
     const { data, error: err } = await doctorApi.completeOnboarding({ upiId, upiQrUrl });
     setSaving(false);
 
-    if (err || !data?.success) {
-      return setError(err || data?.message || 'Failed to complete onboarding. Please try again.');
-    }
+    if (err || !data?.success) return setError(err || data?.message || 'Failed to complete onboarding.');
 
+    mutateUser({ needsOnboarding: false });
     setSubmitted(true);
   }
 
-  // ── Loading ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <main className="page" style={{ maxWidth: 720 }}>
-        <div className="page-header">
-          <h1 className="page-title">Doctor Setup</h1>
-        </div>
-        <div className="card" style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-          Loading your profile…
-        </div>
-      </main>
+      <div className="landing-bg" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>Preparing your workspace...</p>
+      </div>
     );
   }
 
-  // ── Submitted / pending verification ─────────────────────────────────────────
   if (submitted) {
     return (
-      <main className="page" style={{ maxWidth: 640 }}>
-        <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-          {verificationStatus === 'verified' ? (
-            <>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-              <h2>Profile Verified!</h2>
-              <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
-                Your profile is verified and your booking link is active. Start accepting patients.
-              </p>
-            </>
-          ) : verificationStatus === 'rejected' ? (
-            <>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
-              <h2 style={{ color: 'var(--error)' }}>Verification Rejected</h2>
-              {rejectionReason && <p className="text-sm" style={{ marginBottom: 12, color: 'var(--error)' }}>Reason: {rejectionReason}</p>}
-              <p className="text-muted text-sm" style={{ marginBottom: 24 }}>Please update your details and resubmit.</p>
-              <button className="btn btn-primary" onClick={() => { setSubmitted(false); setStep(1); }}>Edit & Resubmit</button>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-              <h2>Submitted — Under Review</h2>
-              <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
-                Your profile is under review by the Curo team. This usually takes 1–2 business days.
-                We'll notify you once verified.
-              </p>
-            </>
-          )}
-
-          {bookingUrl && (
-            <div
-              style={{
-                background: 'var(--surface-raised)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '12px 20px',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '0.9rem',
-                color: 'var(--primary)',
-                marginBottom: 20,
-              }}
-            >
-              {bookingUrl}
+      <div className="landing-bg" style={{ alignItems: 'center', padding: '60px 24px' }}>
+        <div style={{ maxWidth: 640, width: '100%' }}>
+          <VerificationBanner status={verificationStatus} rejectionReason={rejectionReason} />
+          {verificationStatus === 'rejected' && (
+            <div style={{ textAlign: 'center' }}>
+              <button className="auth-btn" onClick={() => { setSubmitted(false); setStep(1); }}>
+                Edit & Resubmit
+              </button>
             </div>
           )}
-          <Link to="/dashboard" className="btn btn-secondary">Go to Dashboard →</Link>
+          {verificationStatus !== 'rejected' && (
+            <div style={{ textAlign: 'center', marginTop: 24 }}>
+              {bookingUrl && (
+                <div style={{ marginBottom: 24, padding: 16, background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Your booking link</div>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--primary)' }}>{bookingUrl}</div>
+                </div>
+              )}
+              <Link to="/dashboard" className="auth-btn primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '16px 32px' }}>
+                Go to Dashboard →
+              </Link>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="page" style={{ maxWidth: 720 }}>
-      <div className="page-header">
-        <h1 className="page-title">Doctor Setup</h1>
-        <p className="page-subtitle">Complete all steps to activate your booking link. Progress is saved at each step.</p>
-      </div>
+    <div className="landing-bg" style={{ alignItems: 'center', padding: '60px 24px' }}>
+      <div style={{ maxWidth: 600, width: '100%' }}>
+        
+        <MinimalStepper current={step} maxDone={maxDone} />
 
-      <Stepper current={step} maxDone={maxDone} />
+        {error && <div className="auth-error">{error}</div>}
 
-      {/* Show verification banner if previously submitted */}
-      {verificationStatus && maxDone >= 1 && (
-        <VerificationBanner status={verificationStatus} rejectionReason={rejectionReason} />
-      )}
+        {step === 1 && (
+          <div className="auth-box">
+            <h2 className="auth-h2">Let's set up your clinic</h2>
+            <p className="auth-sub">Basic details for your patients to know who they are booking with.</p>
 
-      {error && (
-        <div className="notice" style={{ marginBottom: 16, background: 'var(--error-bg)', border: '1px solid #FECACA', color: 'var(--error)', borderRadius: 'var(--radius)' }}>
-          {error}
-        </div>
-      )}
+            <label className="auth-label">Full Name</label>
+            <input className="auth-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Suresh Kumar" />
 
-      {/* ── Step 1: Clinic Details ────────────────────────────────────────── */}
-      {step === 1 && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Clinic Details</h2>
-            <span className="text-xs text-muted">Step 1 of 4</span>
-          </div>
+            <label className="auth-label">Specialisation</label>
+            <select className="auth-input" value={specialisations} onChange={(e) => setSpecialisations(e.target.value)}>
+              <option value="">Select Specialisation</option>
+              <option value="General Physician">General Physician</option>
+              <option value="Cardiologist">Cardiologist</option>
+              <option value="Dermatologist">Dermatologist</option>
+              <option value="Pediatrician">Pediatrician</option>
+              <option value="Neurologist">Neurologist</option>
+            </select>
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Full name <span style={{ color: 'var(--error)' }}>*</span></label>
-              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Suresh Kumar" />
-              <div className="form-hint">Do not add "Dr." prefix; we add it automatically.</div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email (optional)</label>
-              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For notifications" />
-            </div>
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Specialisation <span style={{ color: 'var(--error)' }}>*</span></label>
-              <select className="input" value={specialisations} onChange={(e) => setSpecialisations(e.target.value)}>
-                <option value="">Select Specialisation</option>
-                <option value="General Physician">General Physician</option>
-                <option value="Cardiologist">Cardiologist</option>
-                <option value="Dermatologist">Dermatologist</option>
-                <option value="Pediatrician">Pediatrician</option>
-                <option value="Orthopedist">Orthopedist</option>
-                <option value="Gynecologist">Gynecologist</option>
-                <option value="Neurologist">Neurologist</option>
-                <option value="Psychiatrist">Psychiatrist</option>
-                <option value="Dentist">Dentist</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
+            <label className="auth-label">Email (Optional)</label>
+            <input className="auth-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For notifications" />
 
-          {fullName && (
-            <div className="notice notice-info" style={{ marginBottom: 16 }}>
-              Your booking link: <strong>curo.app/dr/{fullName.toLowerCase().replace(/^(dr\.?|doctor)\s+/i, '').trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}</strong>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              className={`btn btn-primary ${saving ? 'loading' : ''}`}
-              onClick={handleSaveProfile}
-              disabled={saving || !fullName.trim() || !specialisations.trim()}
-            >
-              {saving ? '' : 'Save & Next →'}
+            <button className="auth-btn primary" onClick={handleSaveStep1} disabled={saving}>
+              {saving ? 'Saving...' : 'Next Step →'}
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Step 2: Consultation Fees ─────────────────────────────────────── */}
-      {step === 2 && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Consultation Fees</h2>
-            <span className="text-xs text-muted">Step 2 of 4</span>
-          </div>
+        {step === 2 && (
+          <div className="auth-box">
+            <h2 className="auth-h2">Professional Details</h2>
+            <p className="auth-sub">Build trust with patients by completing your profile.</p>
 
-          {[
-            { label: 'Online consultation', fee: onlineFee, setFee: setOnlineFee, dur: onlineDuration, setDur: setOnlineDuration },
-            { label: 'In-person consultation', fee: inPersonFee, setFee: setInPersonFee, dur: inPersonDuration, setDur: setInPersonDuration },
-            { label: 'Follow-up consultation', fee: followUpFee, setFee: setFollowUpFee, dur: null, setDur: null },
-          ].map((ct) => (
-            <div key={ct.label} style={{ padding: 'var(--space-3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 12 }}>{ct.label}</div>
-              <div className="grid-2">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Fee (₹) — leave blank to skip</label>
-                  <input className="input" type="number" min={50} max={50000} value={ct.fee} onChange={(e) => ct.setFee(e.target.value)} placeholder="e.g. 500" />
+            <label className="auth-label">Undergraduate Degree *</label>
+            <select className="auth-input" value={ugDegree} onChange={(e) => {
+              setUgDegree(e.target.value);
+              setOtherDegrees([]); // Reset PG when UG changes
+            }}>
+              <option value="">Select Degree</option>
+              <option value="MBBS">MBBS</option>
+              <option value="BDS">BDS</option>
+              <option value="BAMS">BAMS</option>
+              <option value="BHMS">BHMS</option>
+            </select>
+
+            {ugDegree && PG_DEGREES_MAP[ugDegree] && (
+              <>
+                <label className="auth-label">Postgraduate & Super Speciality Degrees (Optional)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+                  {PG_DEGREES_MAP[ugDegree].map(deg => (
+                    <label key={deg} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={otherDegrees.includes(deg)} 
+                        onChange={e => {
+                          if (e.target.checked) setOtherDegrees(prev => [...prev, deg]);
+                          else setOtherDegrees(prev => prev.filter(d => d !== deg));
+                        }} 
+                      />
+                      {deg}
+                    </label>
+                  ))}
                 </div>
-                {ct.dur !== null && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Duration (minutes)</label>
-                    <input className="input" type="number" min={5} max={120} value={ct.dur} onChange={(e) => ct.setDur!(e.target.value)} />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            <button className="btn btn-ghost" onClick={() => setStep(1)}>← Back</button>
-            <button
-              className={`btn btn-primary ${saving ? 'loading' : ''}`}
-              onClick={handleSaveFees}
-              disabled={saving}
-            >
-              {saving ? '' : 'Save & Next →'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 3: Weekly Schedule ───────────────────────────────────────── */}
-      {step === 3 && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Weekly Schedule</h2>
-            <span className="text-xs text-muted">Step 3 of 4</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-            {DAYS.map((day) => (
-              <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <input
-                  type="checkbox"
-                  id={`day-${day}`}
-                  checked={schedule[day].active}
-                  onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], active: e.target.checked } }))}
-                />
-                <label htmlFor={`day-${day}`} style={{ width: 32, fontWeight: 600, cursor: 'pointer' }}>{day}</label>
-                <input
-                  className="input"
-                  type="time"
-                  value={schedule[day].start}
-                  disabled={!schedule[day].active}
-                  style={{ width: 120 }}
-                  onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], start: e.target.value } }))}
-                />
-                <span className="text-muted">to</span>
-                <input
-                  className="input"
-                  type="time"
-                  value={schedule[day].end}
-                  disabled={!schedule[day].active}
-                  style={{ width: 120 }}
-                  onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], end: e.target.value } }))}
-                />
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button className="btn btn-ghost" onClick={() => setStep(2)}>← Back</button>
-            <button
-              className={`btn btn-primary ${saving ? 'loading' : ''}`}
-              onClick={handleSaveSchedule}
-              disabled={saving}
-            >
-              {saving ? '' : 'Save & Next →'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 4: Payment Setup (UPI MVP) ───────────── */}
-      {step === 4 && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Payment Setup</h2>
-            <span className="text-xs text-muted">Step 4 of 4</span>
-          </div>
-
-          <div style={{ padding: '0 24px 24px' }}>
-            <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
-              Patients will use these UPI details to pay for their consultation during booking. You can also update this later from your Dashboard.
-            </p>
-
-            <div className="form-group">
-              <label className="form-label">UPI ID / VPA</label>
-              <input type="text" className="input" placeholder="e.g. yourname@okicici" value={upiId} onChange={e => setUpiId(e.target.value)} />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">UPI QR Code Image</label>
-              <input type="file" accept="image/*" className="input" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  if (file.size > 2 * 1024 * 1024) {
-                    alert('File size must be less than 2MB');
-                    return;
-                  }
-                  const reader = new FileReader();
-                  reader.onloadend = () => setUpiQrUrl(reader.result as string);
-                  reader.readAsDataURL(file);
-                }
-              }} />
-              <div className="form-hint">Upload your QR code image (max 2MB). It will be shown to patients during payment.</div>
-            </div>
-
-            {upiQrUrl && (
-              <div style={{ marginTop: 16, border: '1px solid var(--border)', padding: 16, borderRadius: 8, display: 'inline-block' }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>QR Preview:</div>
-                <img src={upiQrUrl} alt="UPI QR Code" style={{ width: 120, height: 120, objectFit: 'contain' }} />
-              </div>
+              </>
             )}
-          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 24px 24px' }}>
-            <button className="btn btn-ghost" onClick={() => setStep(3)}>← Back</button>
-            <button className={`btn btn-primary btn-lg ${saving ? 'loading' : ''}`} disabled={saving} onClick={handleComplete}>
-              Complete Setup ✓
-            </button>
+            <label className="auth-label">Years of Experience (Optional)</label>
+            <input className="auth-input" type="number" min="0" max="100" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} placeholder="e.g. 15" />
+            
+            <label className="auth-label">Languages Spoken (Optional)</label>
+            <MultiSelectDropdown 
+              options={ALL_LANGUAGES} 
+              selected={languages} 
+              onChange={setLanguages} 
+              placeholder="Select Languages..." 
+            />
+
+            <label className="auth-label">Professional Bio (Optional)</label>
+            <textarea className="auth-input" style={{ minHeight: 100, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Brief description of your expertise and background..." />
+
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button className="auth-btn" onClick={() => setStep(1)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                Back
+              </button>
+              <button className="auth-btn primary" onClick={handleSaveStep2} disabled={saving}>
+                {saving ? 'Saving...' : 'Next Step →'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </main>
+        )}
+
+        {step === 3 && (
+          <div className="auth-box">
+            <h2 className="auth-h2">Consultation Fees</h2>
+            <p className="auth-sub">Set your standard fees. Leave blank if not applicable.</p>
+
+            <label className="auth-label">Online Consultation Fee (₹)</label>
+            <input className="auth-input" type="number" value={onlineFee} onChange={(e) => setOnlineFee(e.target.value)} placeholder="e.g. 500" />
+            
+            <label className="auth-label">In-Person Consultation Fee (₹)</label>
+            <input className="auth-input" type="number" value={inPersonFee} onChange={(e) => setInPersonFee(e.target.value)} placeholder="e.g. 800" />
+
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button className="auth-btn" onClick={() => setStep(2)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                Back
+              </button>
+              <button className="auth-btn primary" onClick={handleSaveFees} disabled={saving}>
+                {saving ? 'Saving...' : 'Next Step →'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="auth-box">
+            <h2 className="auth-h2">Your Availability</h2>
+            <p className="auth-sub">When do you see patients?</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
+              {DAYS.map((day) => (
+                <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, width: 80, cursor: 'pointer', fontWeight: 600 }}>
+                    <input type="checkbox" checked={schedule[day].active} onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], active: e.target.checked } }))} />
+                    {day}
+                  </label>
+                  <input className="auth-input" type="time" style={{ marginBottom: 0, padding: 8, flex: 1 }} value={schedule[day].start} disabled={!schedule[day].active} onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], start: e.target.value } }))} />
+                  <span style={{ color: 'var(--text-tertiary)' }}>to</span>
+                  <input className="auth-input" type="time" style={{ marginBottom: 0, padding: 8, flex: 1 }} value={schedule[day].end} disabled={!schedule[day].active} onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], end: e.target.value } }))} />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button className="auth-btn" onClick={() => setStep(3)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                Back
+              </button>
+              <button className="auth-btn primary" onClick={handleSaveSchedule} disabled={saving}>
+                {saving ? 'Saving...' : 'Next Step →'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="auth-box">
+            <h2 className="auth-h2">Payment Setup</h2>
+            <p className="auth-sub">Patients will use these details to pay during booking.</p>
+
+            <label className="auth-label">UPI ID / VPA (Optional for now)</label>
+            <input className="auth-input" type="text" placeholder="e.g. yourname@okicici" value={upiId} onChange={e => setUpiId(e.target.value)} />
+
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button className="auth-btn" onClick={() => setStep(4)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                Back
+              </button>
+              <button className="auth-btn primary" onClick={handleComplete} disabled={saving}>
+                {saving ? 'Finishing...' : 'Complete Setup ✓'}
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
   );
 }

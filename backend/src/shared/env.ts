@@ -34,10 +34,9 @@ export const env = {
   // Document uploads (local disk for MVP)
   UPLOAD_DIR: getEnv('UPLOAD_DIR', 'uploads'),
 
-  // AI pre-consult summary — optional. When AI_API_KEY is unset, CURO uses a
+  // AI pre-consult summary — optional. When GEMINI_API_KEY is unset, CURO uses a
   // deterministic rule-based summary so doctors are never blocked.
-  AI_API_KEY: process.env.AI_API_KEY ?? '',
-  AI_BASE_URL: getEnv('AI_BASE_URL', 'https://api.openai.com/v1'),
-  AI_MODEL: getEnv('AI_MODEL', 'gpt-4o-mini'),
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
+  GEMINI_MODEL: getEnv('GEMINI_MODEL', 'gemini-1.5-flash'),
   AI_TIMEOUT_MS: Number(getEnv('AI_TIMEOUT_MS', '15000')),
 };
