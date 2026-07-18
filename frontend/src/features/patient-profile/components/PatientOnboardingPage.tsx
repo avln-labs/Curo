@@ -31,6 +31,7 @@ export function PatientOnboardingPage() {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function handleSubmit() {
     setError('');
@@ -198,18 +199,31 @@ export function PatientOnboardingPage() {
           {/* Notice */}
           <div
             className="notice notice-info"
-            style={{ marginBottom: 24, fontSize: '0.8125rem' }}
+            style={{ marginBottom: 16, fontSize: '0.8125rem' }}
           >
             📱 Your mobile number is: <strong>+91 {user?.mobile}</strong>
             <br />
             You can update your name and email in Settings anytime.
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '24px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <input 
+              type="checkbox" 
+              id="terms" 
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              style={{ marginTop: '3px', cursor: 'pointer' }}
+            />
+            <label htmlFor="terms" style={{ cursor: 'pointer', lineHeight: '1.4' }}>
+              I agree to the <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms of Service</a> and <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</a>. I consent to the processing of my health information as per the Digital Personal Data Protection Act, 2023.
+            </label>
+          </div>
+
           <button
             id="patient-onboarding-submit"
             className={`btn btn-primary btn-lg ${saving ? 'loading' : ''}`}
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || !termsAccepted}
             style={{ width: '100%' }}
           >
             {saving ? '' : 'Save & Continue →'}

@@ -44,7 +44,6 @@ export function LandingPage() {
   const [error, setError] = useState('');
   const [maskedMobile, setMaskedMobile] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const otpRef = useRef<HTMLInputElement>(null);
 
@@ -280,28 +279,15 @@ export function LandingPage() {
               placeholder="e.g. 9876543210"
               value={mobile}
               onChange={(e) => setMobile(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && termsAccepted && handleSendOtp()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
               autoFocus
               style={{ marginBottom: '16px' }}
             />
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '24px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <input 
-                type="checkbox" 
-                id="terms" 
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                style={{ marginTop: '3px', cursor: 'pointer' }}
-              />
-              <label htmlFor="terms" style={{ cursor: 'pointer', lineHeight: '1.4' }}>
-                I agree to the <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms of Service</a> and <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</a>. I consent to the processing of my health information as per the Digital Personal Data Protection Act, 2023.
-              </label>
-            </div>
             
             <button 
               className="auth-btn primary" 
               onClick={handleSendOtp}
-              disabled={loading || mobile.replace(/\D/g, '').length !== 10 || !termsAccepted}
+              disabled={loading || mobile.replace(/\D/g, '').length !== 10}
             >
               {loading ? 'Sending OTP...' : 'Continue'}
             </button>

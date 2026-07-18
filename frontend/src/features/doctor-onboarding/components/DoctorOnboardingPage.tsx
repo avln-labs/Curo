@@ -149,6 +149,7 @@ export function DoctorOnboardingPage() {
   // ── Step 5 fields ────────────────────────────────────────────────────────────
   const [upiId, setUpiId] = useState('');
   const [upiQrUrl, setUpiQrUrl] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // ── Load existing profile on mount ───────────────────────────────────────────
   useEffect(() => {
@@ -375,7 +376,20 @@ export function DoctorOnboardingPage() {
             <label className="auth-label">Email (Optional)</label>
             <input className="auth-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For notifications" />
 
-            <button className="auth-btn primary" onClick={handleSaveStep1} disabled={saving}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginTop: '16px', marginBottom: '24px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <input 
+                type="checkbox" 
+                id="terms" 
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                style={{ marginTop: '3px', cursor: 'pointer' }}
+              />
+              <label htmlFor="terms" style={{ cursor: 'pointer', lineHeight: '1.4' }}>
+                I agree to the <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms of Service</a> and <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</a>. I consent to the processing of my health information as per the Digital Personal Data Protection Act, 2023.
+              </label>
+            </div>
+
+            <button className="auth-btn primary" onClick={handleSaveStep1} disabled={saving || !termsAccepted}>
               {saving ? 'Saving...' : 'Next Step →'}
             </button>
           </div>

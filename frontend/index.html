@@ -12,5 +12,16 @@
   <body>
     <div id="root"></div>
     <script type="module" src="src/main.tsx"></script>
+    <script>
+      // Clear any Service Workers from previous apps deployed on this domain (e.g. Liquid Plus)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('Unregistered old service worker.');
+          }
+        });
+      }
+    </script>
   </body>
 </html>
