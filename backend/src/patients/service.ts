@@ -107,7 +107,7 @@ export const PatientService = {
 
     const filteredAppointments = appointments.map((a: any) => ({
       ...a,
-      meet_link: getVisibleMeetLink(a.meet_link, a.slot_date, a.slot_time)
+      meet_link: getVisibleMeetLink(a.meet_link, a.slot_date, a.slot_time, a.status)
     }));
 
     return {

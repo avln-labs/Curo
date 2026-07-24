@@ -215,7 +215,7 @@ export function PatientOnboardingPage() {
               style={{ marginTop: '3px', cursor: 'pointer' }}
             />
             <label htmlFor="terms" style={{ cursor: 'pointer', lineHeight: '1.4' }}>
-              I agree to the <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms of Service</a> and <a href="#" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</a>. I consent to the processing of my health information as per the Digital Personal Data Protection Act, 2023.
+              I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</a>. I consent to the processing of my health information as per the Digital Personal Data Protection Act, 2023.
             </label>
           </div>
 

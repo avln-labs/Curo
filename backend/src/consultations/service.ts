@@ -35,7 +35,7 @@ export const ConsultationsService = {
       [doctorId, today]
     );
 
-    const filterLinks = (rows: any[]) => rows.map(r => ({ ...r, meet_link: getVisibleMeetLink(r.meet_link, r.slot_date, r.slot_time) }));
+    const filterLinks = (rows: any[]) => rows; // Doctors should always see their meet links
 
     return {
       today,
@@ -88,7 +88,8 @@ export const ConsultationsService = {
       [appointmentId, doctorId]
     );
     if (appt) {
-      appt.meet_link = getVisibleMeetLink(appt.meet_link, appt.slot_date, appt.slot_time);
+      // Doctors always get their meet link
+      // appt.meet_link is already in the object
     }
     return appt;
   },
@@ -129,18 +130,8 @@ export const ConsultationsService = {
       return { success: false, message: `Appointment is ${appt.status}, cannot complete.` };
     }
 
-    // Block completion if no prescription exists
-    const rx = await db.queryOne(
-      `SELECT id FROM prescriptions WHERE appointment_id = $1`,
-      [appointmentId]
-    );
-    if (!rx) {
-      return {
-        success: false,
-        message: 'Cannot end consultation without a prescription. Please save the prescription first.',
-        code: 'PRESCRIPTION_REQUIRED',
-      };
-    }
+    // We previously blocked completion if no prescription existed, but 
+    // doctors may need to end a consultation without issuing one (e.g., just giving advice).
 
     await db.query(
       `UPDATE appointments SET status = 'completed', updated_at = NOW() WHERE id = $1`,

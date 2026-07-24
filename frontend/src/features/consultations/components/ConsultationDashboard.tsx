@@ -71,14 +71,27 @@ export function ConsultationDashboard() {
   const [advice, setAdvice] = useState('');
   const [savingRx, setSavingRx] = useState(false);
   const [rxSaved, setRxSaved] = useState(false);
+  const [showEndWarning, setShowEndWarning] = useState(false);
 
   const loadData = async () => {
     try {
       const res = await consultationsApi.getToday();
       if (res.data?.success) {
-        setUpcoming(res.data.data.upcoming || []);
-        setLive(res.data.data.live || []);
-        setCompleted(res.data.data.completed || []);
+        const fetchedUpcoming = res.data.data.upcoming || [];
+        const fetchedLive = res.data.data.live || [];
+        const fetchedCompleted = res.data.data.completed || [];
+        
+        setUpcoming(fetchedUpcoming);
+        setLive(fetchedLive);
+        setCompleted(fetchedCompleted);
+        
+        // Auto-select the first live or upcoming patient if none is selected
+        setActiveAppt(currentActive => {
+          if (!currentActive) {
+            return fetchedLive[0] || fetchedUpcoming[0] || null;
+          }
+          return currentActive;
+        });
       }
     } catch (err: any) {
       setError('Failed to load appointments.');
@@ -97,16 +110,19 @@ export function ConsultationDashboard() {
   };
 
   const handleStart = async (appt: PatientAppt, autoJoin: boolean = false) => {
+    let meetWindow: Window | null = null;
+    if (autoJoin && appt.meet_link) {
+      meetWindow = window.open(appt.meet_link, '_blank', 'noopener,noreferrer');
+    }
+    
     setStarting(true);
     const res = await consultationsApi.start(appt.id, {});
     setStarting(false);
     if (res.data?.success) {
       setActiveAppt({ ...appt, status: 'in_progress' });
       loadData();
-      if (autoJoin && appt.meet_link) {
-        window.open(appt.meet_link, '_blank', 'noopener,noreferrer');
-      }
     } else {
+      if (meetWindow) meetWindow.close();
       setError((res.data as any)?.error?.message || res.data?.message || 'Failed to start consultation.');
     }
   };
@@ -134,13 +150,14 @@ export function ConsultationDashboard() {
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = async (force: boolean = false) => {
     if (!activeAppt) return;
-    if (!rxSaved && !activeAppt.prescription_id) {
-      const confirm = window.confirm('Are you sure you want to end this consultation without saving a prescription?');
-      if (!confirm) return;
+    if (!rxSaved && !activeAppt.prescription_id && !force) {
+      setShowEndWarning(true);
+      return;
     }
     
+    setShowEndWarning(false);
     setCompleting(true);
     const res = await consultationsApi.complete(activeAppt.id);
     setCompleting(false);
@@ -148,6 +165,7 @@ export function ConsultationDashboard() {
     if (res.data?.success) {
       setActiveAppt(null);
       setRxSaved(false);
+      setShowEndWarning(false);
       setMedications([{ drugName: '', dose: '', frequency: '', duration: '', instructions: '' }]);
       setDiagnosis('');
       setAdvice('');
@@ -367,14 +385,18 @@ export function ConsultationDashboard() {
                 </div>
               )}
 
-              <PreConsultSummary appointmentId={activeAppt.id} />
-
-              {activeAppt.patient_id && (
-                <div style={{ marginTop: 40 }}>
-                  <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-tertiary)', marginBottom: 16 }}>Uploaded Records</h3>
-                  <PatientDocuments patientId={activeAppt.patient_id} />
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 32, alignItems: 'start' }}>
+                <div>
+                  <PreConsultSummary appointmentId={activeAppt.id} />
                 </div>
-              )}
+
+                {activeAppt.patient_id && (
+                  <div style={{ background: 'var(--surface-card)', padding: '24px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-primary)', marginBottom: 16, marginTop: 0, fontWeight: 600 }}>Patient Records</h3>
+                    <PatientDocuments patientId={activeAppt.patient_id} />
+                  </div>
+                )}
+              </div>
             </section>
 
 
@@ -472,6 +494,28 @@ export function ConsultationDashboard() {
                       disabled={!!activeAppt.prescription_id} 
                     />
                   </div>
+
+                  {showEndWarning && (
+                    <div style={{ marginTop: 24, padding: 24, background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+                        <div>
+                          <h4 style={{ margin: '0 0 4px 0', color: '#92400e', fontSize: '1.1rem' }}>No Prescription Issued</h4>
+                          <p style={{ margin: 0, color: '#b45309', lineHeight: 1.5 }}>
+                            You are about to end this consultation without saving a prescription. Are you sure you want to proceed?
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                        <button className="btn" style={{ background: 'white', color: '#92400e', border: '1px solid #fcd34d' }} onClick={() => setShowEndWarning(false)}>
+                          Go Back
+                        </button>
+                        <button className={`btn ${completing ? 'loading' : ''}`} style={{ background: '#d97706', color: 'white', border: 'none' }} onClick={() => handleComplete(true)} disabled={completing}>
+                          End Without Prescription
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   
                   <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, marginTop: 16, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 24 }}>
                     {!activeAppt.prescription_id ? (
@@ -492,7 +536,7 @@ export function ConsultationDashboard() {
                     <button 
                       className={`btn ${completing ? 'loading' : ''}`} 
                       style={{ background: 'var(--text-primary)', color: 'var(--bg)', padding: '12px 32px', fontSize: '1.1rem' }} 
-                      onClick={handleComplete} 
+                      onClick={() => handleComplete()} 
                       disabled={completing}
                     >
                       End Consultation

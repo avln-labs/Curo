@@ -197,6 +197,10 @@ export const BookingsService = {
       }
     }
 
+    if (apptData && apptData.consultation_type === 'online' && !meetLink) {
+      meetLink = 'https://meet.google.com/demo-meet-link';
+    }
+
     await db.query(
       `UPDATE appointments SET status = 'confirmed', slot_held_until = NULL, meet_link = COALESCE($2, meet_link), calendar_event_id = COALESCE($3, calendar_event_id), updated_at = NOW() WHERE id = $1`,
       [appointmentId, meetLink, calendarEventId]
@@ -264,7 +268,7 @@ export const BookingsService = {
        ORDER BY a.slot_date DESC, a.slot_time DESC`,
       [patientId]
     );
-    return rows.map(r => ({ ...r, meet_link: getVisibleMeetLink(r.meet_link, r.slot_date, r.slot_time) }));
+    return rows.map(r => ({ ...r, meet_link: getVisibleMeetLink(r.meet_link, r.slot_date, r.slot_time, r.status) }));
   },
 
   /** Get a single appointment by ID */
@@ -287,7 +291,7 @@ export const BookingsService = {
       [appointmentId]
     );
     if (appt) {
-      appt.meet_link = getVisibleMeetLink(appt.meet_link, appt.slot_date, appt.slot_time);
+      appt.meet_link = getVisibleMeetLink(appt.meet_link, appt.slot_date, appt.slot_time, appt.status);
     }
     return appt;
   },

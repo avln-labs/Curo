@@ -9,11 +9,24 @@ interface PatientProfile {
   full_name: string;
   gender: string | null;
   age: number | null;
+  date_of_birth: string | null;
   blood_group: string | null;
   allergies: string[];
   mobile: string;
   email: string | null;
   onboarding_complete: boolean;
+}
+
+function calculateAge(dob: string | null): number | null {
+  if (!dob) return null;
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
 }
 
 interface HealthThread {
@@ -214,8 +227,8 @@ export function RecordsPage() {
                 {profile?.full_name || 'My Records'}
               </h1>
               <p className="page-subtitle">
-                {profile?.age && profile?.gender
-                  ? `${profile.age} yrs · ${GENDER_LABELS[profile.gender] || profile.gender}${profile.blood_group ? ` · ${profile.blood_group}` : ''}`
+                {(profile?.age ?? calculateAge(profile?.date_of_birth || null)) && profile?.gender
+                  ? `${profile.age ?? calculateAge(profile?.date_of_birth || null)} yrs · ${GENDER_LABELS[profile.gender] || profile.gender}${profile.blood_group ? ` · ${profile.blood_group}` : ''}`
                   : 'Patient health record'
                 }
               </p>
@@ -234,7 +247,7 @@ export function RecordsPage() {
           <div className="snapshot-grid">
             {[
               { label: 'Blood Group', value: profile.blood_group || '—' },
-              { label: 'Age', value: profile.age ? `${profile.age} years` : '—' },
+              { label: 'Age', value: (profile.age ?? calculateAge(profile.date_of_birth)) ? `${profile.age ?? calculateAge(profile.date_of_birth)} years` : '—' },
               { label: 'Gender', value: profile.gender ? GENDER_LABELS[profile.gender] || profile.gender : '—' },
               { label: 'Mobile', value: `+91 ${profile.mobile}` },
             ].map((f) => (
@@ -308,7 +321,20 @@ export function RecordsPage() {
               <tbody>
                 {appointments.map((a) => (
                   <tr key={a.id}>
-                    <td className="text-sm">{new Date(a.slot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}</td>
+                    <td className="text-sm">
+                      <div style={{ fontWeight: 500 }}>{new Date(a.slot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        {a.slot_time && (
+                          (() => {
+                            const [hStr, mStr] = a.slot_time.split(':');
+                            const h = parseInt(hStr, 10);
+                            const suffix = h >= 12 ? 'PM' : 'AM';
+                            const h12 = h % 12 === 0 ? 12 : h % 12;
+                            return `${h12}:${mStr.slice(0, 2)} ${suffix}`;
+                          })()
+                        )}
+                      </div>
+                    </td>
                     <td className="text-sm font-medium">{a.doctor_name}</td>
                     <td className="text-sm">{a.chief_complaint}</td>
                     <td><span className="badge badge-neutral">{a.consultation_type}</span></td>
@@ -422,8 +448,8 @@ export function RecordsPage() {
 
       {/* Reports tab — upload + manage previous medical records */}
       {tab === 'reports' && (
-        <>
-          <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, alignItems: 'start' }}>
+          <div className="card" style={{ marginBottom: 0 }}>
             <div className="card-header">
               <h2 className="card-title">Add medical records</h2>
             </div>
@@ -435,12 +461,12 @@ export function RecordsPage() {
           </div>
 
           {docs.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '40px 32px' }}>
+            <div className="card" style={{ textAlign: 'center', padding: '40px 32px', marginBottom: 0 }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>🔬</div>
-              <p className="text-muted text-sm">No uploaded reports yet. Add your first record above.</p>
+              <p className="text-muted text-sm">No uploaded reports yet. Add your first record to the left.</p>
             </div>
           ) : (
-            <div className="card">
+            <div className="card" style={{ marginBottom: 0 }}>
               <div className="card-header">
                 <h2 className="card-title">Uploaded reports</h2>
                 <span className="badge badge-neutral">{docs.length}</span>
@@ -475,7 +501,7 @@ export function RecordsPage() {
               </ul>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Reschedule Modal */}

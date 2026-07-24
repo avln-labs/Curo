@@ -13,6 +13,7 @@ import { HomePage } from './features/home';
 import { PatientOnboardingPage, PatientProfilePage } from './features/patient-profile';
 import { DoctorSearchPage } from './features/patient-booking';
 import { DoctorProfilePage } from './features/doctor-profile';
+import { TermsOfService, PrivacyPolicy } from './features/legal';
 import { AppShell } from './shared/components/AppShell';
 import { RequireAuth, useAuth } from './features/auth/AuthContext';
 
@@ -55,6 +56,8 @@ function App() {
       {/* Public: landing + doctor booking page */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/dr/:slug" element={<DoctorPublicPage />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
 
       {/*
         Patient onboarding — standalone (no AppShell sidebar).

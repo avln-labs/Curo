@@ -122,28 +122,37 @@ export function PreConsultSummary({ appointmentId }: { appointmentId: string }) 
                 }
               };
 
+              const parseInline = (text: string, baseKey: number) => {
+                // Parse **bold** and __underline__ recursively
+                const parts = text.split(/(\*\*.*?\*\*|__.*?__)/g);
+                return parts.map((part, idx) => {
+                  if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={`${baseKey}-b-${idx}`}>{part.slice(2, -2)}</strong>;
+                  }
+                  if (part.startsWith('__') && part.endsWith('__')) {
+                    return <u key={`${baseKey}-u-${idx}`}>{part.slice(2, -2)}</u>;
+                  }
+                  return part;
+                });
+              };
+
               lines.forEach((line, i) => {
                 const trimmed = line.trim();
                 
                 if (trimmed.startsWith('### ')) {
                   flushList();
                   const content = trimmed.replace('### ', '');
-                  const isFacts = content.toLowerCase().includes('known facts');
                   elements.push(
-                    <h4 key={i} className={`ai-summary-heading ${isFacts ? 'ai-heading-facts' : 'ai-heading-implications'}`}>
-                      {isFacts ? '✓ Known Facts' : '💡 Possible Implications'}
+                    <h4 key={i} style={{ color: 'var(--primary)', marginTop: elements.length === 0 ? 0 : 20, marginBottom: 12, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>
+                      {content}
                     </h4>
                   );
                 } else if (trimmed.startsWith('- ')) {
                   const content = trimmed.replace('- ', '');
-                  const parts = content.split(/(\*\*.*?\*\*)/g).map((part, j) => {
-                    if (part.startsWith('**') && part.endsWith('**')) return <strong key={j}>{part.slice(2, -2)}</strong>;
-                    return part;
-                  });
-                  currentList.push(<li key={i}>{parts}</li>);
+                  currentList.push(<li key={i} style={{ lineHeight: 1.6 }}>{parseInline(content, i)}</li>);
                 } else {
                   flushList();
-                  elements.push(<p key={i} className={trimmed.startsWith('⚠') ? 'ai-summary-alert' : undefined}>{trimmed}</p>);
+                  elements.push(<p key={i} style={{ lineHeight: 1.6, marginBottom: 12 }}>{parseInline(trimmed, i)}</p>);
                 }
               });
               

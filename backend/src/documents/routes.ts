@@ -114,34 +114,44 @@ documentRouter.get(
   requireAuth,
   requireRole('DOCTOR'),
   async (req: AuthRequest, res) => {
-    const doctor = await db.queryOne<{ id: string }>('SELECT id FROM doctors WHERE user_id = $1', [req.user!.userId]);
-    if (!doctor) return res.status(404).json({ success: false, error: { message: 'Doctor not found.' } });
+    try {
+      const doctor = await db.queryOne<{ id: string }>('SELECT id FROM doctors WHERE user_id = $1', [req.user!.userId]);
+      if (!doctor) return res.status(404).json({ success: false, error: { message: 'Doctor not found.' } });
 
-    const related = await DocumentsRepository.doctorHasRelationship(doctor.id, req.params.patientId);
-    if (!related) return res.status(403).json({ success: false, error: { message: 'No treatment relationship with this patient.' } });
+      const related = await DocumentsRepository.doctorHasRelationship(doctor.id, req.params.patientId);
+      if (!related) return res.status(403).json({ success: false, error: { message: 'No treatment relationship with this patient.' } });
 
-    const data = await DocumentsService.listForPatient(req.params.patientId);
-    return res.json({ success: true, data });
+      const data = await DocumentsService.listForPatient(req.params.patientId);
+      return res.json({ success: true, data });
+    } catch (err: any) {
+      console.error('[DocumentsRoute] Error in GET /patient/:patientId:', err);
+      return res.status(500).json({ success: false, error: { message: 'Internal server error.' } });
+    }
   }
 );
 
 // ─── GET /documents/:id/download ─────────────────────────────────────────────
 
 documentRouter.get('/:id/download', requireAuth, async (req: AuthRequest, res) => {
-  const doc = await DocumentsRepository.findById(req.params.id);
-  if (!doc) return res.status(404).json({ success: false, error: { message: 'Document not found.' } });
+  try {
+    const doc = await DocumentsRepository.findById(req.params.id);
+    if (!doc) return res.status(404).json({ success: false, error: { message: 'Document not found.' } });
 
-  const allowed = await DocumentsService.authorizeAccess(doc, req.user!);
-  if (!allowed) return res.status(403).json({ success: false, error: { message: 'Not authorized to access this document.' } });
+    const allowed = await DocumentsService.authorizeAccess(doc, req.user!);
+    if (!allowed) return res.status(403).json({ success: false, error: { message: 'Not authorized to access this document.' } });
 
-  const filePath = DocumentsService.resolveFilePath(doc.storage_key);
-  if (!filePath) return res.status(410).json({ success: false, error: { message: 'File is no longer available.' } });
+    const filePath = DocumentsService.resolveFilePath(doc.storage_key);
+    if (!filePath) return res.status(410).json({ success: false, error: { message: 'File is no longer available.' } });
 
-  const disposition = req.query.inline === '1' ? 'inline' : 'attachment';
-  res.setHeader('Content-Type', doc.mime_type);
-  res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(doc.original_name)}"`);
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  return res.sendFile(filePath);
+    const disposition = req.query.inline === '1' ? 'inline' : 'attachment';
+    res.setHeader('Content-Type', doc.mime_type);
+    res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(doc.original_name)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.sendFile(filePath);
+  } catch (err: any) {
+    console.error('[DocumentsRoute] Error in GET /:id/download:', err);
+    return res.status(500).json({ success: false, error: { message: 'Internal server error.' } });
+  }
 });
 
 // ─── DELETE /documents/:id ───────────────────────────────────────────────────
